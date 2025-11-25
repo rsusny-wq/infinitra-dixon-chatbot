@@ -1,0 +1,15 @@
+node_modules/
+.expo/
+e2e/
+__tests__/
+.detoxrc.js
+.eslintignore
+.gitignore
+jest.config.js
+babel.config.js
+metro.config.js
+DEVELOPER_HANDOFF.md
+README.md
+*.log
+.env.local
+.env.*.local

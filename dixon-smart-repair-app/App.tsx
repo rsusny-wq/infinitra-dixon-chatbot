@@ -26,7 +26,12 @@ const Stack = createStackNavigator();
 
 // URL-based routing configuration
 const linking = {
-  prefixes: ['https://d37f64klhjdi5b.cloudfront.net', 'http://localhost:19006'],
+  prefixes: [
+    'https://d37f64klhjdi5b.cloudfront.net',
+    'https://infinitra-dixon-chatbot.vercel.app',
+    'http://localhost:19006',
+    'http://localhost:4000'
+  ],
   config: {
     screens: {
       Main: '',

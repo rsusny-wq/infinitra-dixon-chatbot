@@ -1,15 +1,18 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "public": "dist",
+  "cleanUrls": true,
+  "trailingSlash": false,
   "rewrites": [
     {
-      "source": "/:path*",
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ],
   "headers": [
     {
-      "source": "/assets/(.*)",
+      "source": "/assets/.*",
       "headers": [
         {
           "key": "Cache-Control",
@@ -18,11 +21,11 @@
       ]
     },
     {
-      "source": "/(.*)",
+      "source": "/index.html",
       "headers": [
         {
           "key": "Cache-Control",
-          "value": "public, max-age=3600"
+          "value": "no-cache"
         }
       ]
     }

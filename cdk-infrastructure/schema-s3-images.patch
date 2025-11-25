@@ -1,0 +1,30 @@
+# Replace the existing sendMessage mutation (line 509) with:
+
+sendMessage(
+  conversationId: String, 
+  diagnostic_context: String, 
+  image_base64: String,        # Keep for backward compatibility
+  image_s3_key: String,        # NEW: S3 key for uploaded image
+  image_s3_bucket: String,     # NEW: S3 bucket name
+  message: String, 
+  userId: String
+): ChatResponse! @aws_api_key @aws_cognito_user_pools
+
+# Add new mutation for direct S3 upload URL generation
+type Mutation {
+  # ... existing mutations ...
+  
+  # Generate pre-signed URL for direct S3 upload
+  generateImageUploadUrl(
+    fileName: String!,
+    contentType: String!,
+    userId: String
+  ): ImageUploadResponse! @aws_api_key @aws_cognito_user_pools
+}
+
+type ImageUploadResponse {
+  uploadUrl: String!
+  s3Key: String!
+  s3Bucket: String!
+  expiresIn: Int!
+}

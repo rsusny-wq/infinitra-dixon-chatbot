@@ -1,0 +1,19 @@
+{
+  "httpMethod": "OPTIONS",
+  "path": "/health",
+  "headers": {},
+  "multiValueHeaders": {},
+  "queryStringParameters": null,
+  "multiValueQueryStringParameters": null,
+  "pathParameters": null,
+  "stageVariables": null,
+  "requestContext": {
+    "requestId": "test-cors-request-id",
+    "stage": "test",
+    "httpMethod": "OPTIONS",
+    "path": "/health"
+  },
+  "resource": "/health",
+  "body": null,
+  "isBase64Encoded": false
+}

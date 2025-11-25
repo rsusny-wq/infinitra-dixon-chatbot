@@ -1,0 +1,7 @@
+{
+  "body": "{\"action\": \"calculate_labor_estimates\", \"repair_description\": \"BMW timing chain replacement\", \"vehicle_year\": 2015, \"vehicle_make\": \"BMW\", \"vehicle_model\": \"328i\", \"diagnostic_context\": \"Customer reports rattling noise on cold start, especially noticeable first 30 seconds after startup. Vehicle has 95,000 miles. Noise occurs primarily when engine is cold, diminishes as engine warms up. Previous inspection revealed timing chain guides showing wear patterns. Engine runs smoothly once warmed up but exhibits slight rough idle when cold. No check engine light currently, but customer mentions intermittent P0016 code in past. High mileage vehicle with timing chain tensioner likely requiring replacement along with guides and chain.\"}",
+  "httpMethod": "POST",
+  "headers": {
+    "Content-Type": "application/json"
+  }
+}

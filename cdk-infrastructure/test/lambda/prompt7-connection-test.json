@@ -1,0 +1,21 @@
+{
+  "httpMethod": "POST",
+  "path": "/web-search",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "multiValueHeaders": {},
+  "queryStringParameters": null,
+  "multiValueQueryStringParameters": null,
+  "pathParameters": null,
+  "stageVariables": null,
+  "requestContext": {
+    "requestId": "prompt7-connection-test",
+    "stage": "test",
+    "httpMethod": "POST",
+    "path": "/web-search"
+  },
+  "resource": "/web-search",
+  "body": "{\"query\": \"Honda Civic 2020 brake pads automotive parts\", \"searchType\": \"parts\", \"vehicleInfo\": {\"make\": \"Honda\", \"model\": \"Civic\", \"year\": 2020}}",
+  "isBase64Encoded": false
+}

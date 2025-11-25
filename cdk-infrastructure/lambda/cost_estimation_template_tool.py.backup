@@ -1,0 +1,286 @@
+"""
+Cost Estimation Template Tool
+Provides structured template for AI agent to prepare cost estimation data
+"""
+
+import json
+import boto3
+import logging
+from typing import Dict, Any
+from datetime import datetime
+from decimal import Decimal
+import os
+from strands import tool
+
+logger = logging.getLogger(__name__)
+
+@tool
+def prepare_cost_estimate_data(agent, estimate_data: str) -> Dict[str, Any]:
+    """
+    AI agent uses this tool to prepare structured cost estimation data
+    
+    The AI should fill this template with research data in this EXACT format:
+    
+    {
+        "conversation_id": "conv-123",
+        "vehicle_info": {
+            "year": "2014",
+            "make": "Honda", 
+            "model": "Civic",
+            "trim": "LX"
+        },
+        "selected_option": "oem_equivalent",
+        "diagnostic_level": "vehicle",
+        "parts_found": [
+            {
+                "part_type": "brake_pads",
+                "description": "Wagner OEM Equivalent Brake Pads",
+                "price": 45.99,
+                "retailer": "AutoZone",
+                "retailer_url": "https://autozone.com/...",
+                "warranty": "1 year/12,000 miles",
+                "part_number": "D1092",
+                "quality_tier": "oem_equivalent"
+            }
+        ],
+        "labor_estimate": {
+            "task_description": "Replace front brake pads",
+            "estimated_hours": 1.5,
+            "difficulty": "moderate",
+            "special_tools_required": false
+        },
+        "repair_context": {
+            "primary_issue": "Brake pads worn",
+            "symptoms": ["squealing noise", "reduced braking"],
+            "urgency": "moderate"
+        }
+    }
+    
+    Args:
+        agent: Strands agent instance
+        estimate_data: JSON string with the structured data above
+        
+    Returns:
+        Success/failure response and triggers cost estimation
+    """
+    
+    logger.info("🔧 AI Agent preparing cost estimation data")
+    
+    try:
+        # Parse the AI's structured data
+        data = json.loads(estimate_data)
+        
+        # Validate required fields
+        validation_result = _validate_estimate_data(data)
+        if not validation_result['valid']:
+            return {
+                'success': False,
+                'error': f"Data validation failed: {validation_result['errors']}",
+                'template_reminder': _get_template_reminder()
+            }
+        
+        # Convert prices to Decimal for DynamoDB compatibility
+        processed_data = _process_data_types(data)
+        
+        # Store the structured data
+        storage_result = _store_estimate_data(processed_data)
+        
+        if storage_result['success']:
+            # Trigger the actual cost estimation service
+            estimation_result = _trigger_cost_estimation(processed_data)
+            
+            return {
+                'success': True,
+                'message': 'Cost estimation data prepared successfully',
+                'data_id': storage_result['data_id'],
+                'estimate_id': estimation_result.get('estimate_id'),
+                'next_step': 'Cost estimation service will generate formal estimate'
+            }
+        else:
+            return {
+                'success': False,
+                'error': f"Failed to store data: {storage_result['error']}"
+            }
+            
+    except json.JSONDecodeError as e:
+        return {
+            'success': False,
+            'error': f"Invalid JSON format: {str(e)}",
+            'template_reminder': _get_template_reminder()
+        }
+    except Exception as e:
+        logger.error(f"Error in prepare_cost_estimate_data: {str(e)}")
+        return {
+            'success': False,
+            'error': f"Unexpected error: {str(e)}"
+        }
+
+def _validate_estimate_data(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Validate that AI provided all required fields"""
+    
+    required_fields = [
+        'conversation_id',
+        'vehicle_info',
+        'selected_option',
+        'parts_found',
+        'labor_estimate'
+    ]
+    
+    errors = []
+    
+    # Check top-level required fields
+    for field in required_fields:
+        if field not in data:
+            errors.append(f"Missing required field: {field}")
+    
+    # Validate vehicle_info structure
+    if 'vehicle_info' in data:
+        vehicle_required = ['year', 'make', 'model']
+        for field in vehicle_required:
+            if field not in data['vehicle_info']:
+                errors.append(f"Missing vehicle_info.{field}")
+    
+    # Validate parts_found structure
+    if 'parts_found' in data:
+        if not isinstance(data['parts_found'], list) or len(data['parts_found']) == 0:
+            errors.append("parts_found must be a non-empty list")
+        else:
+            for i, part in enumerate(data['parts_found']):
+                part_required = ['part_type', 'description', 'price', 'retailer']
+                for field in part_required:
+                    if field not in part:
+                        errors.append(f"Missing parts_found[{i}].{field}")
+    
+    # Validate labor_estimate structure
+    if 'labor_estimate' in data:
+        labor_required = ['task_description', 'estimated_hours']
+        for field in labor_required:
+            if field not in data['labor_estimate']:
+                errors.append(f"Missing labor_estimate.{field}")
+    
+    return {
+        'valid': len(errors) == 0,
+        'errors': errors
+    }
+
+def _process_data_types(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Convert data types for DynamoDB compatibility"""
+    
+    processed = data.copy()
+    
+    # Convert part prices to Decimal
+    if 'parts_found' in processed:
+        for part in processed['parts_found']:
+            if 'price' in part:
+                part['price'] = Decimal(str(part['price']))
+    
+    # Convert labor hours to Decimal
+    if 'labor_estimate' in processed and 'estimated_hours' in processed['labor_estimate']:
+        processed['labor_estimate']['estimated_hours'] = Decimal(str(processed['labor_estimate']['estimated_hours']))
+    
+    # Add metadata
+    processed['created_at'] = datetime.now().isoformat()
+    processed['data_source'] = 'ai_agent_template'
+    processed['ttl'] = int(datetime.now().timestamp() + 86400 * 7)  # 7 days TTL
+    
+    return processed
+
+def _store_estimate_data(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Store the structured estimation data"""
+    
+    try:
+        dynamodb = boto3.resource('dynamodb')
+        table_name = os.environ.get('COST_ESTIMATION_DATA_TABLE', 'CostEstimationData')
+        table = dynamodb.Table(table_name)
+        
+        data_id = f"TEMPLATE-{data['conversation_id']}-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        data['data_id'] = data_id
+        
+        table.put_item(Item=data)
+        
+        logger.info(f"✅ Stored cost estimation template data: {data_id}")
+        
+        return {
+            'success': True,
+            'data_id': data_id
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ Failed to store estimation data: {e}")
+        return {
+            'success': False,
+            'error': str(e)
+        }
+
+def _trigger_cost_estimation(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Trigger the actual cost estimation service with structured data"""
+    
+    try:
+        # Import the cost estimation service
+        from cost_estimation_service import CostEstimationService
+        
+        service = CostEstimationService()
+        
+        # Convert template data to cost estimation service format
+        estimation_input = {
+            'conversationId': data['conversation_id'],
+            'vehicleInfo': data['vehicle_info'],
+            'repairItems': [
+                {
+                    'component': part['part_type'],
+                    'action': 'replace',
+                    'priority': 'high',
+                    'repairType': part['part_type'],
+                    'conversationId': data['conversation_id']  # Add conversation ID to each item
+                }
+                for part in data['parts_found']
+            ],
+            'selectedOption': data['selected_option'],
+            'diagnosticLevel': data.get('diagnostic_level', 'vehicle'),
+            'aiRetailerLinks': [
+                {
+                    'name': part['retailer'],
+                    'url': part.get('retailer_url', ''),
+                    'price': float(part['price'])
+                }
+                for part in data['parts_found']
+            ]
+        }
+        
+        # Generate the estimate
+        result = service.generate_immediate_estimate_for_customer(**estimation_input)
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"❌ Failed to trigger cost estimation: {e}")
+        return {
+            'success': False,
+            'error': str(e)
+        }
+
+def _get_template_reminder() -> str:
+    """Return template format reminder for AI"""
+    
+    return """
+Please use this EXACT JSON structure:
+{
+    "conversation_id": "your-conversation-id",
+    "vehicle_info": {"year": "YYYY", "make": "Brand", "model": "Model"},
+    "selected_option": "oem|oem_equivalent|budget",
+    "parts_found": [
+        {
+            "part_type": "brake_pads|oil_change|air_filter|etc",
+            "description": "Part description",
+            "price": 45.99,
+            "retailer": "Store name",
+            "retailer_url": "https://...",
+            "warranty": "warranty info"
+        }
+    ],
+    "labor_estimate": {
+        "task_description": "What work needs to be done",
+        "estimated_hours": 1.5
+    }
+}
+"""

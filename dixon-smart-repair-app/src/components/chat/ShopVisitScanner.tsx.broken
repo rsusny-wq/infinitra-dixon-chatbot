@@ -1,0 +1,971 @@
+/**
+ * Shop Visit Scanner Component - Phase 1.1
+ * QR code scanner for shop visit recognition with service type selection
+ * Integrates with existing sidebar structure and session management
+ */
+
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+  ActivityIndicator,
+  Modal,
+  Dimensions,
+  Platform,
+  TextInput,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { generateClient } from 'aws-amplify/api';
+
+// Platform-specific QR code scanner import
+let QRCodeScanner: any = null;
+if (Platform.OS !== 'web') {
+  try {
+    QRCodeScanner = require('react-native-qrcode-scanner').default;
+  } catch (error) {
+    console.warn('QR Code Scanner not available on this platform');
+  }
+}
+
+// Web QR Scanner Component with real QR detection
+const WebQRScanner: React.FC<{ onScan: (data: any) => void; onError: (error: any) => void }> = ({ onScan, onError }) => {
+  const videoRef = React.useRef<HTMLVideoElement>(null);
+  const [scanning, setScanning] = React.useState(false);
+  const [qrScanner, setQrScanner] = React.useState<any>(null);
+
+  React.useEffect(() => {
+    initializeScanner();
+    return () => cleanup();
+  }, []);
+
+  const initializeScanner = async () => {
+    try {
+      // Dynamically import qr-scanner for web only
+      const QrScanner = (await import('qr-scanner')).default;
+      
+      if (videoRef.current) {
+        const scanner = new QrScanner(
+          videoRef.current,
+          (result: any) => {
+            console.log('QR Code detected:', result.data);
+            setScanning(false);
+            onScan({ data: result.data });
+          },
+          {
+            onDecodeError: (error: any) => {
+              // Don't log decode errors, they're normal when no QR code is visible
+            },
+            highlightScanRegion: true,
+            highlightCodeOutline: true,
+          }
+        );
+        
+        setQrScanner(scanner);
+        await scanner.start();
+        setScanning(true);
+      }
+    } catch (error) {
+      console.error('Failed to initialize QR scanner:', error);
+      onError(error);
+    }
+  };
+
+  const cleanup = () => {
+    if (qrScanner) {
+      qrScanner.stop();
+      qrScanner.destroy();
+    }
+  };
+
+  return (
+    <View style={styles.webCameraContainer}>
+      <video
+        ref={videoRef}
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+        }}
+        playsInline
+        muted
+      />
+      <View style={styles.scanOverlay}>
+        <View style={styles.scanArea} />
+        <Text style={styles.scanInstruction}>
+          Point camera at QR code at the front desk
+        </Text>
+        {scanning && (
+          <Text style={styles.scanStatus}>
+            📱 Scanning for QR codes...
+          </Text>
+        )}
+      </View>
+    </View>
+  );
+};
+import { useSessionStore } from '../../stores/sessionStore';
+import { chatService } from '../../services/ChatService';
+import AuthService, { AutomotiveUser } from '../../services/AuthService';
+import { validateShopQRData, TEST_SHOP_QR_CODES } from '../../utils/qrCodeGenerator';
+
+// Initialize GraphQL client
+const graphqlClient = generateClient();
+
+const { width, height } = Dimensions.get('window');
+
+interface ShopVisitScannerProps {
+  currentUser: AutomotiveUser | null;
+  onVisitRecorded?: (visitData: VisitData) => void;
+}
+
+interface VisitData {
+  visitId: string;
+  shopId: string;
+  serviceType: 'diagnostic' | 'repair' | 'pickup' | 'consultation';
+  timestamp: string;
+  status: string;
+}
+
+interface QRCodeData {
+  shopId: string;
+  location: string;
+  name?: string;
+}
+
+const ShopVisitScanner: React.FC<ShopVisitScannerProps> = ({
+  currentUser,
+  onVisitRecorded
+}) => {
+  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [showScanner, setShowScanner] = useState(false);
+  const [scanned, setScanned] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  const [qrData, setQrData] = useState<QRCodeData | null>(null);
+  const [showServiceSelection, setShowServiceSelection] = useState(false);
+  const [recentVisits, setRecentVisits] = useState<VisitData[]>([]);
+  
+  const { currentSessionId, getSessionMessages } = useSessionStore();
+
+  useEffect(() => {
+    loadRecentVisits();
+  }, [currentUser]);
+
+  const loadRecentVisits = async () => {
+    if (!currentUser) return;
+    
+    try {
+      console.log('Loading recent visits for user:', currentUser.id);
+      
+      // Use proper GraphQL client with authentication
+      const response = await graphqlClient.graphql({
+        query: `
+          query GetUserVisits($userId: String!) {
+            getUserVisits(userId: $userId) {
+              visitId
+              shopId
+              serviceType
+              timestamp
+              status
+              customerName
+              estimatedServiceTime
+            }
+          }
+        `,
+        variables: {
+          userId: currentUser.id
+        },
+        authMode: 'apiKey' // Use API key authentication for now
+      });
+
+      if (response.data?.getUserVisits) {
+        const visits = response.data.getUserVisits.map((visit: any) => ({
+          visitId: visit.visitId,
+          shopId: visit.shopId,
+          serviceType: visit.serviceType,
+          timestamp: visit.timestamp,
+          status: visit.status
+        }));
+        setRecentVisits(visits);
+      } else {
+        setRecentVisits([]);
+      }
+    } catch (error) {
+      console.error('Failed to load recent visits:', error);
+      // Set empty array on error, don't break the UI
+      setRecentVisits([]);
+    }
+  };
+
+  const requestCameraPermission = async () => {
+    // react-native-qrcode-scanner handles permissions automatically
+    setHasPermission(true);
+    return true;
+  };
+
+  const handleStartScan = async () => {
+    if (!currentUser) {
+      Alert.alert(
+        'Authentication Required',
+        'Please sign in to record shop visits.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    // react-native-qrcode-scanner will request permissions when needed
+    setShowScanner(true);
+    setScanned(false);
+  };
+
+  const handleBarCodeScanned = (e: any) => {
+    setScanned(true);
+    
+    // Validate QR code data
+    const validation = validateShopQRData(e.data);
+    
+    if (validation.valid && validation.parsed) {
+      setQrData(validation.parsed);
+      setShowScanner(false);
+      setShowServiceSelection(true);
+    } else {
+      Alert.alert(
+        'Invalid QR Code',
+        validation.error || 'This QR code is not from a Dixon Smart Repair location.',
+        [
+          { text: 'Try Again', onPress: () => setScanned(false) },
+          { text: 'Cancel', onPress: () => setShowScanner(false) }
+        ]
+      );
+    }
+  };
+  };
+
+  const handleServiceTypeSelection = async (serviceType: 'diagnostic' | 'repair' | 'pickup' | 'consultation') => {
+    if (!qrData || !currentUser) return;
+
+    setProcessing(true);
+    setShowServiceSelection(false);
+
+    try {
+      // Collect current session data for mechanic handoff
+      const sessionData = await collectSessionData();
+      
+      // Record the visit via GraphQL mutation
+      const visitData = await recordVisit({
+        shopId: qrData.shopId,
+        serviceType,
+        sessionData,
+        customerName: currentUser.name || currentUser.email,
+        vehicleInfo: sessionData.vehicleInfo
+      });
+
+      // Update local state
+      setRecentVisits(prev => [visitData, ...prev.slice(0, 4)]); // Keep last 5 visits
+      
+      // Notify parent component
+      if (onVisitRecorded) {
+        onVisitRecorded(visitData);
+      }
+
+      // Show success message
+      Alert.alert(
+        'Visit Recorded Successfully! ✅',
+        `Check-in complete at ${qrData.name || 'Dixon Smart Repair'}\n\nService Type: ${serviceType.charAt(0).toUpperCase() + serviceType.slice(1)}\n\nYour diagnostic session data has been loaded for the mechanic.`,
+        [{ text: 'OK' }]
+      );
+
+    } catch (error) {
+      console.error('Failed to record visit:', error);
+      Alert.alert(
+        'Recording Failed',
+        'Failed to record your visit. Please try again or check in at the front desk.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setProcessing(false);
+      setQrData(null);
+    }
+  };
+
+  const collectSessionData = async () => {
+    try {
+      // Get current session messages for mechanic context
+      const messages = currentSessionId ? getSessionMessages(currentSessionId) : [];
+      
+      // Extract relevant data from recent conversation
+      const conversationHistory = messages.slice(-10); // Last 10 messages for context
+      
+      // TODO: Extract AI diagnosis, vehicle info, and estimates from messages
+      // For now, return basic structure
+      return {
+        conversationId: currentSessionId,
+        conversationHistory,
+        aiDiagnosis: null,
+        approvedEstimate: null,
+        vehicleInfo: {},
+        customerPreferences: {
+          preferredPartType: 'oem_equivalent',
+          communicationMethod: 'app',
+          serviceReminders: true
+        },
+        specialInstructions: []
+      };
+    } catch (error) {
+      console.error('Failed to collect session data:', error);
+      return {
+        conversationId: currentSessionId,
+        conversationHistory: [],
+        aiDiagnosis: null,
+        approvedEstimate: null,
+        vehicleInfo: {},
+        customerPreferences: {},
+        specialInstructions: []
+      };
+    }
+  };
+
+  const recordVisit = async (visitInput: any): Promise<VisitData> => {
+    try {
+      console.log('Recording visit:', visitInput);
+      
+      // Use proper GraphQL client with authentication
+      const response = await graphqlClient.graphql({
+        query: `
+          mutation RecordShopVisit($visit: ShopVisitInput!) {
+            recordShopVisit(visit: $visit) {
+              visitId
+              shopId
+              serviceType
+              timestamp
+              status
+              customerName
+              vehicleInfo {
+                year
+                make
+                model
+                vin
+              }
+              estimatedServiceTime
+            }
+          }
+        `,
+        variables: {
+          visit: visitInput
+        },
+        authMode: 'apiKey' // Use API key authentication for now
+      });
+
+      if (response.data?.recordShopVisit) {
+        const visit = response.data.recordShopVisit;
+        return {
+          visitId: visit.visitId,
+          shopId: visit.shopId,
+          serviceType: visit.serviceType,
+          timestamp: visit.timestamp,
+          status: visit.status
+        };
+      } else {
+        throw new Error('Failed to record visit - no response data');
+      }
+    } catch (error) {
+      console.error('GraphQL recordShopVisit error:', error);
+      throw new Error(`Failed to record visit: ${error.message}`);
+    }
+  };
+
+  const renderServiceTypeSelection = () => {
+    if (!showServiceSelection || !qrData) return null;
+
+    const serviceTypes = [
+      {
+        type: 'diagnostic' as const,
+        title: 'Diagnostic Service',
+        description: 'Vehicle diagnosis and troubleshooting',
+        icon: 'search-outline',
+        color: '#10a37f'
+      },
+      {
+        type: 'repair' as const,
+        title: 'Repair Service',
+        description: 'Scheduled repair work',
+        icon: 'build-outline',
+        color: '#FF6B35'
+      },
+      {
+        type: 'pickup' as const,
+        title: 'Vehicle Pickup',
+        description: 'Picking up completed vehicle',
+        icon: 'car-outline',
+        color: '#007AFF'
+      },
+      {
+        type: 'consultation' as const,
+        title: 'Consultation',
+        description: 'Discuss repair options and estimates',
+        icon: 'chatbubbles-outline',
+        color: '#8E44AD'
+      }
+    ];
+
+    return (
+      <Modal visible={showServiceSelection} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.serviceSelectionModal}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Service Type</Text>
+              <Text style={styles.modalSubtitle}>
+                What brings you to {qrData.name || 'Dixon Smart Repair'} today?
+              </Text>
+            </View>
+
+            <View style={styles.serviceTypeContainer}>
+              {serviceTypes.map((service) => (
+                <TouchableOpacity
+                  key={service.type}
+                  style={[styles.serviceTypeButton, { borderColor: service.color }]}
+                  onPress={() => handleServiceTypeSelection(service.type)}
+                  disabled={processing}
+                >
+                  <Ionicons name={service.icon as any} size={24} color={service.color} />
+                  <View style={styles.serviceTypeText}>
+                    <Text style={styles.serviceTypeTitle}>{service.title}</Text>
+                    <Text style={styles.serviceTypeDescription}>{service.description}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="#666" />
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => {
+                setShowServiceSelection(false);
+                setQrData(null);
+              }}
+              disabled={processing}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
+
+  const renderQRScanner = () => {
+    if (!showScanner) return null;
+
+    // Web platform - try to use camera first, fallback to test interface
+    if (Platform.OS === 'web') {
+      return (
+        <Modal visible={showScanner} animationType="slide">
+          <View style={styles.scannerContainer}>
+            <View style={styles.scannerHeader}>
+              <TouchableOpacity
+                onPress={() => setShowScanner(false)}
+                style={styles.closeButton}
+              >
+                <Ionicons name="close" size={24} color="#fff" />
+              </TouchableOpacity>
+              <Text style={styles.scannerTitle}>Scan Shop QR Code</Text>
+              <View style={styles.placeholder} />
+            </View>
+
+            <View style={styles.cameraContainer}>
+              <WebQRScanner 
+                onScan={handleBarCodeScanned}
+                onError={(error) => {
+                  console.error('Camera error:', error);
+                  // Show fallback interface
+                }}
+              />
+              
+              <View style={styles.webFallbackContainer}>
+                <Text style={styles.webFallbackTitle}>Camera not available?</Text>
+                <TouchableOpacity
+                  style={styles.testButton}
+                  onPress={() => {
+                    handleBarCodeScanned({ data: TEST_SHOP_QR_CODES.DIXON_MAIN });
+                  }}
+                >
+                  <Text style={styles.testButtonText}>Use Test Shop Data</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      );
+    }
+
+    // Mobile platform - use actual QR code scanner
+    if (QRCodeScanner) {
+      return (
+        <Modal visible={showScanner} animationType="slide">
+          <View style={styles.scannerContainer}>
+            <View style={styles.scannerHeader}>
+              <TouchableOpacity
+                onPress={() => setShowScanner(false)}
+                style={styles.closeButton}
+              >
+                <Ionicons name="close" size={24} color="#fff" />
+              </TouchableOpacity>
+              <Text style={styles.scannerTitle}>Scan Shop QR Code</Text>
+              <View style={styles.placeholder} />
+            </View>
+
+            <View style={styles.cameraContainer}>
+              <QRCodeScanner
+                onRead={handleBarCodeScanned}
+                reactivate={!scanned}
+                reactivateTimeout={2000}
+                showMarker={true}
+                markerStyle={styles.scanArea}
+                cameraStyle={styles.camera}
+                topContent={
+                  <Text style={styles.scanInstruction}>
+                    Point camera at QR code at the front desk
+                  </Text>
+                }
+                bottomContent={
+                  scanned ? (
+                    <TouchableOpacity
+                      style={styles.scanAgainButton}
+                      onPress={() => setScanned(false)}
+                    >
+                      <Text style={styles.scanAgainText}>Tap to Scan Again</Text>
+                    </TouchableOpacity>
+                  ) : null
+                }
+              />
+            </View>
+          </View>
+        </Modal>
+      );
+    }
+
+    // Fallback if QR scanner not available
+    return (
+      <Modal visible={showScanner} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.webScannerModal}>
+            <Text style={styles.modalTitle}>QR Scanner Not Available</Text>
+            <Text style={styles.webInstructions}>
+              QR code scanning is not available on this platform.
+            </Text>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => setShowScanner(false)}
+            >
+              <Text style={styles.cancelButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
+
+  const renderRecentVisits = () => {
+    if (recentVisits.length === 0) {
+      return (
+        <View style={styles.emptyState}>
+          <Ionicons name="location-outline" size={48} color="#ccc" />
+          <Text style={styles.emptyStateText}>No recent visits</Text>
+          <Text style={styles.emptyStateSubtext}>
+            Scan a QR code at Dixon Smart Repair to check in
+          </Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.recentVisitsContainer}>
+        <Text style={styles.sectionTitle}>Recent Visits</Text>
+        {recentVisits.map((visit) => (
+          <View key={visit.visitId} style={styles.visitCard}>
+            <View style={styles.visitHeader}>
+              <Text style={styles.visitServiceType}>
+                {visit.serviceType.charAt(0).toUpperCase() + visit.serviceType.slice(1)}
+              </Text>
+              <Text style={styles.visitStatus}>{visit.status}</Text>
+            </View>
+            <Text style={styles.visitDate}>
+              {new Date(visit.timestamp).toLocaleDateString()} at{' '}
+              {new Date(visit.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </Text>
+          </View>
+        ))}
+      </View>
+    );
+  };
+
+  if (processing) {
+    return (
+      <View style={styles.processingContainer}>
+        <ActivityIndicator size="large" color="#10a37f" />
+        <Text style={styles.processingText}>Recording your visit...</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Shop Visits</Text>
+        <Text style={styles.subtitle}>Check in when you arrive at the shop</Text>
+      </View>
+
+      <TouchableOpacity
+        style={styles.scanButton}
+        onPress={handleStartScan}
+        disabled={!currentUser}
+      >
+        <Ionicons name="qr-code-outline" size={24} color="#fff" />
+        <Text style={styles.scanButtonText}>Scan QR Code</Text>
+      </TouchableOpacity>
+
+      {!currentUser && (
+        <View style={styles.authNotice}>
+          <Ionicons name="information-circle-outline" size={20} color="#FF6B35" />
+          <Text style={styles.authNoticeText}>
+            Sign in to record shop visits and access your visit history
+          </Text>
+        </View>
+      )}
+
+      {currentUser && renderRecentVisits()}
+
+      {renderQRScanner()}
+      {renderServiceTypeSelection()}
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f7f7f8',
+    padding: 16,
+  },
+  header: {
+    marginBottom: 24,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: '#666',
+  },
+  scanButton: {
+    backgroundColor: '#10a37f',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  scanButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  authNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF3E0',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  authNoticeText: {
+    fontSize: 14,
+    color: '#FF6B35',
+    marginLeft: 8,
+    flex: 1,
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
+  emptyStateText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#666',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyStateSubtext: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+    paddingHorizontal: 20,
+  },
+  recentVisitsContainer: {
+    flex: 1,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 12,
+  },
+  visitCard: {
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 8,
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  visitHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  visitServiceType: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  visitStatus: {
+    fontSize: 12,
+    color: '#10a37f',
+    backgroundColor: '#E8F5E8',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  visitDate: {
+    fontSize: 14,
+    color: '#666',
+  },
+  processingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  processingText: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 16,
+  },
+  // Scanner Modal Styles
+  scannerContainer: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  scannerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 60,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  closeButton: {
+    padding: 8,
+  },
+  scannerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  placeholder: {
+    width: 40,
+  },
+  cameraContainer: {
+    flex: 1,
+  },
+  camera: {
+    flex: 1,
+  },
+  scanArea: {
+    borderColor: '#10a37f',
+    borderWidth: 2,
+    borderRadius: 12,
+  },
+  scanInstruction: {
+    color: '#fff',
+    fontSize: 16,
+    textAlign: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+  },
+  scanAgainButton: {
+    backgroundColor: '#10a37f',
+    margin: 20,
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  scanAgainText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  // Service Selection Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  serviceSelectionModal: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    marginHorizontal: 20,
+    maxWidth: 400,
+    width: '90%',
+  },
+  modalHeader: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+  },
+  serviceTypeContainer: {
+    marginBottom: 20,
+  },
+  serviceTypeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderWidth: 1,
+    borderRadius: 8,
+    marginBottom: 12,
+    backgroundColor: '#fff',
+  },
+  serviceTypeText: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  serviceTypeTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 2,
+  },
+  serviceTypeDescription: {
+    fontSize: 14,
+    color: '#666',
+  },
+  cancelButton: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    color: '#666',
+  },
+  // Web-specific styles
+  webScannerModal: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    marginHorizontal: 20,
+    maxWidth: 500,
+    width: '90%',
+  },
+  webCloseButton: {
+    padding: 4,
+  },
+  webInstructions: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  webInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 14,
+    minHeight: 80,
+    marginBottom: 16,
+    textAlignVertical: 'top',
+  },
+  testButton: {
+    backgroundColor: '#10a37f',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  testButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  webNote: {
+    fontSize: 12,
+    color: '#999',
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  // Web camera styles
+  webCameraContainer: {
+    flex: 1,
+    position: 'relative',
+  },
+  scanOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  webFallbackContainer: {
+    position: 'absolute',
+    bottom: 50,
+    left: 20,
+    right: 20,
+    alignItems: 'center',
+  },
+  webFallbackTitle: {
+    color: '#fff',
+    fontSize: 16,
+    marginBottom: 10,
+  },
+  scanStatus: {
+    color: '#fff',
+    fontSize: 14,
+    marginTop: 10,
+    textAlign: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+});
+
+export default ShopVisitScanner;

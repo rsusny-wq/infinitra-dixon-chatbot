@@ -1,0 +1,65 @@
+{
+  "generateEstimate": {
+    "query": "mutation GenerateCostEstimate($input: DetailedCostEstimateInput!) { generateCostEstimate(input: $input) { success message status customerEstimate { estimateId breakdown { total parts { total } labor { total } tax } } } }",
+    "variables": {
+      "input": {
+        "conversationId": "test-conv-1733368800",
+        "diagnosticLevel": "comprehensive",
+        "selectedOption": "oem_parts",
+        "vehicleInfo": {
+          "year": "2020",
+          "make": "Honda",
+          "model": "Civic",
+          "trim": "LX",
+          "vin": "1HGBH41JXMN109186"
+        },
+        "repairItems": [
+          {
+            "repairType": "brake_repair",
+            "description": "Replace brake pads and rotors",
+            "urgency": "medium"
+          }
+        ],
+        "aiRetailerLinks": [
+          {
+            "name": "AutoZone",
+            "url": "https://autozone.com/brake-pads",
+            "price": 89.99,
+            "description": "Premium brake pads"
+          }
+        ]
+      }
+    }
+  },
+  "shareWithMechanic": {
+    "query": "mutation ShareEstimateWithMechanic($estimateId: String!, $customerComment: String!, $shopId: String!) { shareEstimateWithMechanic(estimateId: $estimateId, customerComment: $customerComment, shopId: $shopId) { id status sharedEstimateId customerComment } }",
+    "variables": {
+      "estimateId": "PLACEHOLDER_ESTIMATE_ID",
+      "customerComment": "Please review - urgent brake repair needed",
+      "shopId": "shop-test-001"
+    }
+  },
+  "updateModifiedEstimate": {
+    "query": "mutation UpdateModifiedEstimate($requestId: String!, $modifiedEstimate: String!, $mechanicNotes: String!, $mechanicId: String!) { updateModifiedEstimate(requestId: $requestId, modifiedEstimate: $modifiedEstimate, mechanicNotes: $mechanicNotes, mechanicId: $mechanicId) { id status modifiedEstimate { breakdown { total parts { total } labor { total } tax } } mechanicNotes modifiedAt } }",
+    "variables": {
+      "requestId": "PLACEHOLDER_REQUEST_ID",
+      "modifiedEstimate": "{\"estimateId\":\"test-estimate-123\",\"breakdown\":{\"total\":450.50,\"parts\":{\"total\":200.00,\"items\":[{\"description\":\"Premium brake pads\",\"cost\":120.00,\"warranty\":\"2 years\",\"url\":\"https://autozone.com/brake-pads\"},{\"description\":\"Brake rotors\",\"cost\":80.00,\"warranty\":\"2 years\"}]},\"labor\":{\"total\":187.50,\"totalHours\":2.5,\"hourlyRate\":75.00},\"shopFees\":{\"total\":25.00},\"tax\":38.00},\"confidence\":92}",
+      "mechanicNotes": "Found additional wear on rotors, adjusted estimate accordingly. Used premium parts for better longevity.",
+      "mechanicId": "mechanic-test-001"
+    }
+  },
+  "approveModifiedEstimate": {
+    "query": "mutation ApproveModifiedEstimate($estimateId: String!, $customerNotes: String) { approveModifiedEstimate(estimateId: $estimateId, customerNotes: $customerNotes) { id status customerApprovalNotes approvedAt } }",
+    "variables": {
+      "estimateId": "PLACEHOLDER_ESTIMATE_ID",
+      "customerNotes": "Looks good, please proceed with the repair"
+    }
+  },
+  "rejectModifiedEstimate": {
+    "query": "mutation RejectModifiedEstimate($estimateId: String!, $customerNotes: String!) { rejectModifiedEstimate(estimateId: $estimateId, customerNotes: $customerNotes) { id status customerRejectionNotes rejectedAt } }",
+    "variables": {
+      "estimateId": "PLACEHOLDER_ESTIMATE_ID",
+      "customerNotes": "Cost is too high, please find cheaper alternatives"
+    }
+  }
+}

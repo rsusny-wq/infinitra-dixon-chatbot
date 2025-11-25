@@ -1,0 +1,199 @@
+/**
+ * Chat Service - Dixon Smart Repair
+ * Handles all chat-related operations including AI messaging and cost estimation
+ */
+
+import { GraphQLService } from './GraphQLService';
+
+export interface ChatMessage {
+  id: string;
+  conversationId: string;
+  message: string;
+  sender: 'user' | 'assistant';
+  timestamp: string;
+  poweredBy?: string;
+  success?: boolean;
+  diagnostic_context?: {
+    level: string;
+    accuracy: number;
+    user_selection: string;
+    vin_enhanced: boolean;
+  };
+}
+
+export interface SendMessageRequest {
+  message: string;
+  conversationId?: string;
+  userId?: string;
+  diagnostic_context?: string;
+  image_base64?: string;
+}
+
+export interface SendMessageResponse {
+  conversationId: string;
+  message: string;
+  timestamp: string;
+  sender: string;
+  poweredBy: string;
+  success: boolean;
+  diagnostic_context?: {
+    level: string;
+    accuracy: number;
+    user_selection: string;
+    vin_enhanced: boolean;
+  };
+}
+
+export interface CostEstimateRequest {
+  conversationId: string;
+  vehicleInfo: {
+    make?: string;
+    model?: string;
+    year?: string;
+    vin?: string;
+    engine?: string;
+    trim?: string;
+  };
+  repairItems: Array<{
+    partName: string;
+    partType: string;
+    quantity: number;
+    estimatedPrice: number;
+  }>;
+  selectedOption: string; // 'oem' | 'oem_equivalent' | 'budget'
+  diagnosticLevel: string;
+  aiRetailerLinks?: Array<{
+    retailer: string;
+    url: string;
+    price: number;
+  }>;
+}
+
+export interface CostEstimateResponse {
+  id: string;
+  conversationId: string;
+  vehicleInfo: any;
+  repairItems: any[];
+  laborCosts: any;
+  partsCosts: any;
+  totalEstimate: number;
+  status: string;
+  createdAt: string;
+  disclaimers: string[];
+}
+
+export class ChatService {
+  private graphqlService: GraphQLService;
+
+  constructor() {
+    this.graphqlService = new GraphQLService();
+  }
+
+  /**
+   * Send a message to the AI chat system
+   */
+  async sendMessage(request: SendMessageRequest): Promise<SendMessageResponse> {
+    try {
+      const response = await this.graphqlService.sendMessage({
+        message: request.message,
+        conversationId: request.conversationId,
+        userId: request.userId,
+        diagnostic_context: request.diagnostic_context,
+        image_base64: request.image_base64,
+      });
+
+      return {
+        conversationId: response.conversationId,
+        message: response.message,
+        timestamp: response.timestamp,
+        sender: response.sender,
+        poweredBy: response.poweredBy || 'Dixon Smart Repair AI',
+        success: response.success,
+        diagnostic_context: response.diagnostic_context,
+      };
+    } catch (error) {
+      console.error('ChatService.sendMessage error:', error);
+      throw new Error('Failed to send message');
+    }
+  }
+
+  /**
+   * Generate a detailed cost estimate
+   */
+  async generateCostEstimate(request: CostEstimateRequest): Promise<CostEstimateResponse> {
+    try {
+      const response = await this.graphqlService.generateCostEstimate({
+        input: {
+          conversationId: request.conversationId,
+          vehicleInfo: {
+            make: request.vehicleInfo.make,
+            model: request.vehicleInfo.model,
+            year: request.vehicleInfo.year,
+            vin: request.vehicleInfo.vin,
+            engine: request.vehicleInfo.engine,
+            trim: request.vehicleInfo.trim,
+          },
+          repairItems: request.repairItems.map(item => ({
+            partName: item.partName,
+            partType: item.partType,
+            quantity: item.quantity,
+            estimatedPrice: item.estimatedPrice,
+          })),
+          selectedOption: request.selectedOption,
+          diagnosticLevel: request.diagnosticLevel,
+          aiRetailerLinks: request.aiRetailerLinks?.map(link => ({
+            retailer: link.retailer,
+            url: link.url,
+            price: link.price,
+          })) || [],
+        },
+      });
+
+      return response;
+    } catch (error) {
+      console.error('ChatService.generateCostEstimate error:', error);
+      throw new Error('Failed to generate cost estimate');
+    }
+  }
+
+  /**
+   * Get an existing cost estimate
+   */
+  async getCostEstimate(conversationId: string): Promise<CostEstimateResponse | null> {
+    try {
+      const response = await this.graphqlService.getCostEstimate(conversationId);
+      return response;
+    } catch (error) {
+      console.error('ChatService.getCostEstimate error:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Authorize work for a cost estimate
+   */
+  async authorizeWork(costEstimateId: string, authorizationType: 'digital' | 'in_person'): Promise<boolean> {
+    try {
+      await this.graphqlService.authorizeWork(costEstimateId, authorizationType);
+      return true;
+    } catch (error) {
+      console.error('ChatService.authorizeWork error:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get conversation history
+   */
+  async getConversationHistory(conversationId: string): Promise<ChatMessage[]> {
+    try {
+      const response = await this.graphqlService.getConversation(conversationId);
+      return response?.messages || [];
+    } catch (error) {
+      console.error('ChatService.getConversationHistory error:', error);
+      return [];
+    }
+  }
+}
+
+export const chatService = new ChatService();

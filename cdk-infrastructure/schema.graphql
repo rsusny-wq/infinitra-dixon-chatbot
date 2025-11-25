@@ -1,0 +1,1022 @@
+schema {
+  query: Query
+  mutation: Mutation
+  subscription: Subscription
+}
+
+type AIContext {
+  conversationHistory: [Message!]!
+  customerPreferences: CustomerPreferences
+  lastCostEstimate: CostEstimate
+  lastDiagnosis: AIDiagnosis
+  sessionSummary: String!
+  vehicleInfo: VehicleInfo
+}
+
+type AIDiagnosis {
+  alternativeDiagnoses: [Diagnosis!]!
+  confidence: Int!
+  primaryDiagnosis: Diagnosis!
+  recommendedActions: [String!]!
+}
+
+type AISuggestion {
+  confidence: Int!
+  #  diagnostic_insight, response_suggestion, next_steps
+  content: String!
+  reasoning: String!
+  suggestedActions: [String!]
+  suggestionType: String!
+}
+
+type AuthorizationStatus {
+  digitalApproval: Boolean!
+  inPersonAuthorization: Boolean!
+  partsCanBeOrdered: Boolean!
+  workCanBegin: Boolean!
+}
+
+type AverageCompletionTimes {
+  high: Int!
+  low: Int!
+  medium: Int!
+}
+
+type ChatResponse {
+  conversationId: String! @aws_api_key @aws_cognito_user_pools
+  diagnostic_accuracy: String @aws_api_key @aws_cognito_user_pools
+  error: String @aws_api_key @aws_cognito_user_pools
+  extraction_method: String @aws_api_key @aws_cognito_user_pools
+  message: String! @aws_api_key @aws_cognito_user_pools
+  poweredBy: String! @aws_api_key @aws_cognito_user_pools
+  processingTime: Float @aws_api_key @aws_cognito_user_pools
+  sender: String! @aws_api_key @aws_cognito_user_pools
+  success: Boolean! @aws_api_key @aws_cognito_user_pools
+  timestamp: String! @aws_api_key @aws_cognito_user_pools
+  #  NEW: VIN extraction fields
+  vin_enhanced: Boolean @aws_api_key @aws_cognito_user_pools
+  vin_extraction_attempted: Boolean @aws_api_key @aws_cognito_user_pools
+  vin_found: Boolean @aws_api_key @aws_cognito_user_pools
+}
+
+type Conversation {
+  chatbot: String
+  createdAt: String!
+  enhanced: Boolean
+  id: String!
+  messages: [Message!]!
+  status: String!
+  title: String!
+  updatedAt: String!
+  userId: String!
+}
+
+type ConversationHistory {
+  conversationId: String!
+  count: Int!
+  error: String
+  messages: [Message!]!
+  success: Boolean!
+}
+
+type ConversationSummary {
+  id: String! @aws_api_key @aws_cognito_user_pools
+  title: String! @aws_api_key @aws_cognito_user_pools
+  createdAt: String! @aws_api_key @aws_cognito_user_pools
+  lastAccessed: String! @aws_api_key @aws_cognito_user_pools
+  messageCount: Int! @aws_api_key @aws_cognito_user_pools
+  diagnosticLevel: String! @aws_api_key @aws_cognito_user_pools
+  diagnosticAccuracy: String! @aws_api_key @aws_cognito_user_pools
+  vinEnhanced: Boolean! @aws_api_key @aws_cognito_user_pools
+  isActive: Boolean! @aws_api_key @aws_cognito_user_pools
+}
+
+type ConversationResponse {
+  conversationId: String! @aws_cognito_user_pools
+  createdAt: String! @aws_cognito_user_pools
+  error: String @aws_cognito_user_pools
+  success: Boolean! @aws_cognito_user_pools
+  title: String! @aws_cognito_user_pools
+  userId: String! @aws_cognito_user_pools
+}
+
+type CostBreakdown {
+  labor: LaborCosts! @aws_api_key @aws_cognito_user_pools
+  parts: PartsCosts! @aws_api_key @aws_cognito_user_pools
+  shopFees: ShopFees! @aws_api_key @aws_cognito_user_pools
+  tax: Float! @aws_api_key @aws_cognito_user_pools
+  total: Float! @aws_api_key @aws_cognito_user_pools
+}
+
+type CostEstimate {
+  description: String!
+  max: Float!
+  min: Float!
+}
+
+type CostEstimateResponse {
+  customerEstimate: DetailedCostEstimate @aws_api_key @aws_cognito_user_pools
+  error: String @aws_api_key @aws_cognito_user_pools
+  message: String! @aws_api_key @aws_cognito_user_pools
+  nextStep: String! @aws_api_key @aws_cognito_user_pools
+  status: String! @aws_api_key @aws_cognito_user_pools
+  success: Boolean! @aws_api_key @aws_cognito_user_pools
+}
+
+type CustomerPreferences {
+  #  oem, oem_equivalent, budget
+  communicationMethod: String
+  preferredPartType: String
+  #  app, email, phone
+  serviceReminders: Boolean
+}
+
+#  NEW: Phase 3.1 - Cost Estimation Types
+type DetailedCostEstimate {
+  authorizationStatus: AuthorizationStatus!
+  breakdown: CostBreakdown!
+  confidence: Int!
+  conversationId: String!
+  createdAt: String!
+  customerVisible: Boolean!
+  diagnosticLevel: String!
+  disclaimer: String!
+  estimateId: String!
+  mechanicApprovalRequired: Boolean!
+  selectedOption: String!
+  status: String!
+  validUntil: String!
+  vehicleInfo: VehicleInfo!
+}
+
+#  NEW: Phase 3 - User-Centric Cost Estimate Types
+type UserCostEstimate {
+  id: String! @aws_api_key @aws_cognito_user_pools
+  estimateId: String! @aws_api_key @aws_cognito_user_pools
+  userId: String! @aws_api_key @aws_cognito_user_pools
+  conversationId: String! @aws_api_key @aws_cognito_user_pools
+  vehicleInfo: VehicleInfo! @aws_api_key @aws_cognito_user_pools
+  selectedOption: String! @aws_api_key @aws_cognito_user_pools
+  breakdown: CostBreakdown! @aws_api_key @aws_cognito_user_pools
+  status: String! @aws_api_key @aws_cognito_user_pools
+  createdAt: String! @aws_api_key @aws_cognito_user_pools
+  validUntil: String! @aws_api_key @aws_cognito_user_pools
+  confidence: Int! @aws_api_key @aws_cognito_user_pools
+}
+
+type UserCostEstimatesResponse {
+  success: Boolean! @aws_api_key @aws_cognito_user_pools
+  estimates: [UserCostEstimate!]! @aws_api_key @aws_cognito_user_pools
+  count: Int! @aws_api_key @aws_cognito_user_pools
+  error: String @aws_api_key @aws_cognito_user_pools
+}
+
+type CostEstimateByIdResponse {
+  success: Boolean! @aws_api_key @aws_cognito_user_pools
+  estimate: UserCostEstimate @aws_api_key @aws_cognito_user_pools
+  error: String @aws_api_key @aws_cognito_user_pools
+}
+
+type UserLabourEstimatesResponse {
+  success: Boolean! @aws_api_key @aws_cognito_user_pools
+  estimates: [LabourEstimate!]! @aws_api_key @aws_cognito_user_pools
+  count: Int! @aws_api_key @aws_cognito_user_pools
+  error: String @aws_api_key @aws_cognito_user_pools
+}
+
+type LabourEstimate {
+  reportId: String! @aws_api_key @aws_cognito_user_pools
+  userId: String! @aws_api_key @aws_cognito_user_pools
+  conversationId: String! @aws_api_key @aws_cognito_user_pools
+  repairType: String! @aws_api_key @aws_cognito_user_pools
+  vehicleInfo: LabourEstimateVehicleInfo @aws_api_key @aws_cognito_user_pools
+  initialEstimate: LabourEstimateData @aws_api_key @aws_cognito_user_pools
+  modelResults: LabourEstimateModelResults @aws_api_key @aws_cognito_user_pools
+  finalEstimate: LabourEstimateData @aws_api_key @aws_cognito_user_pools
+  consensusReasoning: String! @aws_api_key @aws_cognito_user_pools
+  dataQuality: LabourEstimateDataQuality @aws_api_key @aws_cognito_user_pools
+  createdAt: String! @aws_api_key @aws_cognito_user_pools
+  version: String! @aws_api_key @aws_cognito_user_pools
+}
+
+type LabourEstimateVehicleInfo {
+  year: String @aws_api_key @aws_cognito_user_pools
+  make: String @aws_api_key @aws_cognito_user_pools
+  model: String @aws_api_key @aws_cognito_user_pools
+  trim: String @aws_api_key @aws_cognito_user_pools
+}
+
+type LabourEstimateData {
+  labor_hours_low: Float @aws_api_key @aws_cognito_user_pools
+  labor_hours_high: Float @aws_api_key @aws_cognito_user_pools
+  labor_hours_average: Float @aws_api_key @aws_cognito_user_pools
+  reasoning: String @aws_api_key @aws_cognito_user_pools
+}
+
+type LabourEstimateModelResults {
+  claude_estimate: LabourEstimateClaudeData @aws_api_key @aws_cognito_user_pools
+  web_validation: LabourEstimateWebData @aws_api_key @aws_cognito_user_pools
+}
+
+type LabourEstimateClaudeData {
+  labor_hours_low: Float @aws_api_key @aws_cognito_user_pools
+  labor_hours_high: Float @aws_api_key @aws_cognito_user_pools
+  labor_hours_average: Float @aws_api_key @aws_cognito_user_pools
+  reason_for_low: String @aws_api_key @aws_cognito_user_pools
+  reason_for_high: String @aws_api_key @aws_cognito_user_pools
+  reason_for_average: String @aws_api_key @aws_cognito_user_pools
+}
+
+type LabourEstimateWebData {
+  labor_hours_low: Float @aws_api_key @aws_cognito_user_pools
+  labor_hours_high: Float @aws_api_key @aws_cognito_user_pools
+  labor_hours_average: Float @aws_api_key @aws_cognito_user_pools
+  confidence: String @aws_api_key @aws_cognito_user_pools
+  search_answer: String @aws_api_key @aws_cognito_user_pools
+  source: String @aws_api_key @aws_cognito_user_pools
+}
+
+type LabourEstimateDataQuality {
+  score: Int @aws_api_key @aws_cognito_user_pools
+  level: String @aws_api_key @aws_cognito_user_pools
+  factors: [String!] @aws_api_key @aws_cognito_user_pools
+  model_count: Int @aws_api_key @aws_cognito_user_pools
+}
+
+type TitleGenerationResponse {
+  success: Boolean! @aws_api_key @aws_cognito_user_pools
+  title: String @aws_api_key @aws_cognito_user_pools
+  error: String @aws_api_key @aws_cognito_user_pools
+  generatedBy: String @aws_api_key @aws_cognito_user_pools
+  processingTime: Float @aws_api_key @aws_cognito_user_pools
+}
+
+type TitleUpdateResponse {
+  success: Boolean! @aws_api_key @aws_cognito_user_pools
+  title: String @aws_api_key @aws_cognito_user_pools
+  error: String @aws_api_key @aws_cognito_user_pools
+}
+
+type UserConversationsResponse {
+  success: Boolean! @aws_api_key @aws_cognito_user_pools
+  conversations: [ConversationSummary!]! @aws_api_key @aws_cognito_user_pools
+  count: Int! @aws_api_key @aws_cognito_user_pools
+  error: String @aws_api_key @aws_cognito_user_pools
+}
+
+type ConversationMessagesResponse {
+  success: Boolean! @aws_api_key @aws_cognito_user_pools
+  messages: [ConversationMessage!]! @aws_api_key @aws_cognito_user_pools
+  error: String @aws_api_key @aws_cognito_user_pools
+}
+
+type ConversationMessage {
+  id: String! @aws_api_key @aws_cognito_user_pools
+  content: String! @aws_api_key @aws_cognito_user_pools
+  role: String! @aws_api_key @aws_cognito_user_pools
+  timestamp: String! @aws_api_key @aws_cognito_user_pools
+  metadata: String @aws_api_key @aws_cognito_user_pools
+}
+
+type DeletionResponse {
+  success: Boolean! @aws_cognito_user_pools
+  message: String! @aws_cognito_user_pools
+  deletedItems: Int @aws_cognito_user_pools
+  error: String @aws_cognito_user_pools
+}
+
+type EstimateResponse {
+  success: Boolean! @aws_cognito_user_pools
+  estimateId: String! @aws_cognito_user_pools
+  response: String! @aws_cognito_user_pools
+  customerComment: String @aws_cognito_user_pools
+  respondedAt: String! @aws_cognito_user_pools
+  error: String @aws_cognito_user_pools
+}
+
+type Diagnosis {
+  confidence: Int!
+  description: String!
+  issue: String!
+}
+
+type DiagnosticSession {
+  aiDiagnosis: AIDiagnosis!
+  conversationId: String!
+  createdAt: String!
+  customerId: String!
+  estimatedCost: CostEstimate!
+  id: String!
+  shopId: String
+  status: String!
+  symptoms: [String!]!
+  updatedAt: String!
+  urgency: String!
+  vehicleInfo: VehicleInfo
+}
+
+type InfoRequest {
+  createdAt: String!
+  id: String!
+  mechanicId: String!
+  message: String!
+  requestType: String!
+  sessionId: String!
+  status: String!
+  urgency: String!
+}
+
+type KanbanColumn {
+  count: Int!
+  items: [WorkAuthorization!]!
+  status: String!
+}
+
+type LaborCosts {
+  hourlyRate: Float! @aws_api_key @aws_cognito_user_pools
+  items: [LaborItem!]! @aws_api_key @aws_cognito_user_pools
+  total: Float! @aws_api_key @aws_cognito_user_pools
+  totalHours: Float! @aws_api_key @aws_cognito_user_pools
+}
+
+type LaborItem {
+  cost: Float! @aws_api_key @aws_cognito_user_pools
+  description: String! @aws_api_key @aws_cognito_user_pools
+  hours: Float! @aws_api_key @aws_cognito_user_pools
+  partNumber: String! @aws_api_key @aws_cognito_user_pools
+  rate: Float! @aws_api_key @aws_cognito_user_pools
+}
+
+type Mechanic {
+  certifications: [String!]
+  createdAt: String!
+  email: String!
+  id: String!
+  isActive: Boolean!
+  name: String!
+  shopId: String!
+  specialties: [String!]
+  updatedAt: String!
+  userId: String!
+}
+
+type MechanicMessage {
+  aiSuggestion: AISuggestion
+  content: String!
+  id: String!
+  mechanicRequestId: String!
+  messageType: String!
+  metadata: MessageMetadata
+  senderId: String!
+  #  customer, mechanic, ai_assistant
+  senderName: String!
+  senderType: String!
+  #  text, info_request, service_update, ai_suggestion
+  timestamp: String!
+}
+
+type MechanicNotification {
+  createdAt: String!
+  id: String!
+  #  low, medium, high
+  isRead: Boolean!
+  mechanicId: String!
+  mechanicRequestId: String
+  message: String!
+  priority: String!
+  #  new_request, customer_response, urgent_request
+  title: String!
+  type: String!
+}
+
+#  NEW: Phase 2.1 - Customer Communication Types
+type MechanicRequest {
+  aiContext: AIContext!
+  #  queued, assigned, active, completed, cancelled
+  assignedMechanicId: String
+  assignedMechanicName: String
+  conversationId: String! @aws_api_key @aws_cognito_user_pools
+  conversationSummary: String
+  createdAt: String! @aws_api_key @aws_cognito_user_pools
+  customerId: String! @aws_api_key @aws_cognito_user_pools
+  customerName: String! @aws_api_key @aws_cognito_user_pools
+  estimatedResponseTime: String
+  id: String! @aws_api_key @aws_cognito_user_pools
+  requestMessage: String! @aws_api_key @aws_cognito_user_pools
+  shopId: String! @aws_api_key @aws_cognito_user_pools
+  #  low, medium, high
+  status: String! @aws_api_key @aws_cognito_user_pools
+  summaryStatus: String
+  updatedAt: String! @aws_api_key @aws_cognito_user_pools
+  urgency: String! @aws_api_key @aws_cognito_user_pools
+  # NEW: Cost estimate sharing fields
+  sharedEstimateId: String @aws_api_key @aws_cognito_user_pools
+  customerComment: String @aws_api_key @aws_cognito_user_pools
+  sharedEstimate: UserCostEstimate
+  # NEW: Modified estimate fields
+  modifiedEstimate: UserCostEstimate
+  mechanicNotes: String @aws_api_key @aws_cognito_user_pools
+  modifiedByMechanicId: String @aws_api_key @aws_cognito_user_pools
+  modifiedAt: String @aws_api_key @aws_cognito_user_pools
+  # NEW: Customer approval fields
+  customerApprovalNotes: String @aws_api_key @aws_cognito_user_pools
+  customerRejectionNotes: String @aws_api_key @aws_cognito_user_pools
+  approvedAt: String @aws_api_key @aws_cognito_user_pools
+  rejectedAt: String @aws_api_key @aws_cognito_user_pools
+}
+
+type MechanicReview {
+  additionalServices: [String!]
+  id: String!
+  mechanicId: String!
+  mechanicNotes: String!
+  modifiedCost: CostEstimate
+  modifiedDiagnosis: Diagnosis
+  recommendedUrgency: String
+  reviewedAt: String!
+  sessionId: String!
+  status: String!
+}
+
+type MechanicWorkflow {
+  kanbanColumns: [KanbanColumn!]!
+  statistics: WorkflowStatistics!
+  totalItems: Int!
+}
+
+type MechanicWorkload {
+  active: Int!
+  completed: Int!
+  mechanicId: String!
+}
+
+#  Dixon Smart Repair - AppSync GraphQL Schema
+# Strands Conversational Chat with Real-time Subscriptions
+# UPDATED: Authorization directives for anonymous + authenticated users
+# NEW: Mechanic Interface Support
+type Message {
+  content: String!
+  conversationId: String!
+  id: String!
+  messageType: String!
+  poweredBy: String
+  sender: String!
+  timestamp: String!
+}
+
+type MessageMetadata {
+  estimatedResponseTime: String
+  requestType: String
+  #  low, medium, high
+  requiresResponse: Boolean
+  #  vehicle_info, symptoms, photos, diagnostic_data
+  urgency: String
+}
+
+type Mutation {
+  addMechanic(email: String!, name: String!, shopId: String!, userId: String!): Mechanic! @aws_cognito_user_pools
+  assignMechanicRequest(mechanicId: String!, requestId: String!): MechanicRequest! @aws_api_key @aws_cognito_user_pools
+  #  🔐 AUTHENTICATED ONLY: Requires user login
+  createConversation(title: String, userId: String!): ConversationResponse! @aws_cognito_user_pools
+  deleteConversation(conversationId: String!): DeletionResponse! @aws_cognito_user_pools
+  createShop(address: String, email: String, name: String!, phone: String): Shop! @aws_cognito_user_pools
+  #  NEW: Phase 2.2 - Work Authorization Mutations
+  createWorkAuthorization(input: WorkAuthorizationInput!): WorkAuthorization! @aws_cognito_user_pools
+  #  NEW: Phase 3.1 - Cost Estimation Mutations
+  generateCostEstimate(input: DetailedCostEstimateInput!): CostEstimateResponse! @aws_api_key @aws_cognito_user_pools
+  markNotificationRead(notificationId: String!): MechanicNotification! @aws_cognito_user_pools
+  #  NEW: Shop Visit Mutations for Phase 1.1
+  recordShopVisit(visit: ShopVisitInput!): ShopVisit! @aws_cognito_user_pools
+  #  NEW: Vehicle Management Mutations
+  addUserVehicle(vehicle: VehicleInput!): Vehicle! @aws_cognito_user_pools
+  updateUserVehicle(vehicleId: String!, vehicle: VehicleInput!): Vehicle! @aws_cognito_user_pools
+  deleteUserVehicle(vehicleId: String!): Boolean! @aws_cognito_user_pools
+  #  NEW: Phase 2.1 - Customer Communication Mutations
+  requestMechanic(request: MechanicRequestInput!): MechanicRequest! @aws_api_key @aws_cognito_user_pools
+  requestMoreInfo(request: InfoRequestInput!): InfoRequest! @aws_cognito_user_pools
+  # NEW: Cost estimate sharing mutation
+  shareEstimateWithMechanic(estimateId: String!, customerComment: String!, shopId: String!): MechanicRequest! @aws_api_key @aws_cognito_user_pools
+  #  NEW: Mechanic Interface Mutations
+  reviewDiagnosis(review: MechanicReviewInput!): MechanicReview! @aws_api_key @aws_cognito_user_pools
+  # NEW: Cost estimate review mutation
+  reviewCostEstimate(review: MechanicReviewInput!): MechanicReview! @aws_api_key @aws_cognito_user_pools
+  # NEW: Customer response to reviewed estimate
+  respondToEstimateReview(estimateId: String!, response: String!, customerComment: String): EstimateResponse! @aws_api_key @aws_cognito_user_pools
+  #  🌐 PUBLIC: Anonymous diagnostic chat (limited features)
+  sendAnonymousMessage(message: String!, sessionId: String!): ChatResponse! @aws_api_key @aws_cognito_user_pools
+  sendMechanicMessage(message: MechanicMessageInput!): MechanicMessage! @aws_api_key @aws_cognito_user_pools
+  #  🌐 PUBLIC + AUTHENTICATED: Available to both anonymous (API key) and authenticated users
+  sendMessage(
+    conversationId: String, 
+    diagnostic_context: String, 
+    image_base64: String,        # Keep for backward compatibility
+    image_s3_key: String,        # NEW: S3 key for uploaded image
+    image_s3_bucket: String,     # NEW: S3 bucket name
+    message: String, 
+    userId: String
+  ): ChatResponse! @aws_api_key @aws_cognito_user_pools
+  
+  # Generate pre-signed URL for direct S3 image upload
+  generateImageUploadUrl(
+    fileName: String!,
+    contentType: String!,
+    userId: String
+  ): ImageUploadResponse! @aws_api_key @aws_cognito_user_pools
+  
+  # AI-Powered Title Generation
+  generateConversationTitle(content: String!): TitleGenerationResponse! @aws_api_key @aws_cognito_user_pools
+  updateConversationTitle(conversationId: String!, title: String!): TitleUpdateResponse! @aws_api_key @aws_cognito_user_pools
+  updateQuote(quote: CostEstimateInput!, sessionId: String!): DiagnosticSession! @aws_cognito_user_pools
+  updateRequestStatus(requestId: String!, status: String!): MechanicRequest! @aws_api_key @aws_cognito_user_pools
+  updateModifiedEstimate(requestId: String!, modifiedEstimate: String!, mechanicNotes: String!, mechanicId: String!): MechanicRequest! @aws_api_key @aws_cognito_user_pools
+  approveModifiedEstimate(estimateId: String!, customerNotes: String): MechanicRequest! @aws_api_key @aws_cognito_user_pools
+  rejectModifiedEstimate(estimateId: String!, customerNotes: String!): MechanicRequest! @aws_api_key @aws_cognito_user_pools
+  updateVisitStatus(mechanicNotes: String, status: String!, visitId: String!): ShopVisit! @aws_cognito_user_pools
+  updateWorkflowStatus(input: WorkflowStatusUpdateInput!): WorkAuthorization! @aws_cognito_user_pools
+  #  NEW: Admin Management Mutations
+  createMechanicRecord(input: CreateMechanicRecordInput!): CreateMechanicRecordResponse! @aws_cognito_user_pools
+  updateMechanicStatus(mechanicId: String!, shopId: String!, status: String!): UpdateMechanicStatusResponse! @aws_cognito_user_pools
+}
+
+type PartsCosts {
+  items: [PartsItem!]! @aws_api_key @aws_cognito_user_pools
+  retailerLinksSource: String! @aws_api_key @aws_cognito_user_pools
+  selectedOption: String! @aws_api_key @aws_cognito_user_pools
+  total: Float! @aws_api_key @aws_cognito_user_pools
+}
+
+type PartsItem {
+  cost: Float! @aws_api_key @aws_cognito_user_pools
+  description: String! @aws_api_key @aws_cognito_user_pools
+  option: String! @aws_api_key @aws_cognito_user_pools
+  partNumber: String! @aws_api_key @aws_cognito_user_pools
+  retailerName: String! @aws_api_key @aws_cognito_user_pools
+  retailerUrl: String! @aws_api_key @aws_cognito_user_pools
+  warranty: String! @aws_api_key @aws_cognito_user_pools
+}
+
+type Query {
+  #  🔐 AUTHENTICATED ONLY: Requires user login
+  getConversation(conversationId: String!): ConversationHistory @aws_cognito_user_pools
+  #  NEW: Phase 3.1 - Cost Estimation Queries
+  getCostEstimate(conversationId: String!): DetailedCostEstimate @aws_api_key @aws_cognito_user_pools
+  #  NEW: Phase 3 - User-Centric Cost Estimate Queries
+  getUserCostEstimates(limit: Int, userId: String!): UserCostEstimatesResponse @aws_api_key @aws_cognito_user_pools
+  getUserLabourEstimates(limit: Int, userId: String!): UserLabourEstimatesResponse @aws_api_key @aws_cognito_user_pools
+  getCostEstimateById(estimateId: String!): CostEstimateByIdResponse @aws_api_key @aws_cognito_user_pools
+  getCustomerWorkStatus(customerId: String!): [WorkAuthorization!]! @aws_cognito_user_pools
+  getDiagnosticSession(sessionId: String!): DiagnosticSession @aws_cognito_user_pools
+  getMechanicMessages(mechanicRequestId: String!): [MechanicMessage!]! @aws_api_key @aws_cognito_user_pools
+  getMechanicNotifications(mechanicId: String!): [MechanicNotification!]! @aws_cognito_user_pools
+  getMechanicRequestById(requestId: String!): MechanicRequest @aws_api_key @aws_cognito_user_pools
+  #  NEW: Phase 2.1 - Customer Communication Queries
+  getMechanicRequests(customerId: String!): [MechanicRequest!]! @aws_api_key @aws_cognito_user_pools
+  getMechanicReviews(mechanicId: String!): [MechanicReview!]! @aws_cognito_user_pools
+  #  NEW: Phase 2.2 - Work Authorization Queries
+  getMechanicWorkflow(mechanicId: String!, shopId: String): MechanicWorkflow! @aws_cognito_user_pools
+  #  NEW: Mechanic Interface Queries
+  getPendingDiagnoses(shopId: String!): [DiagnosticSession!]! @aws_api_key @aws_cognito_user_pools
+  getQueuedRequests(shopId: String!): [MechanicRequest!]! @aws_api_key @aws_cognito_user_pools
+  getShopStatistics(shopId: String!): ShopStatistics @aws_api_key @aws_cognito_user_pools
+  getShopVisits(endDate: String, shopId: String!, startDate: String): [ShopVisit!]! @aws_cognito_user_pools
+  getShopWorkflowOverview(shopId: String!): ShopWorkflowOverview! @aws_cognito_user_pools
+  #  NEW: Shop Visit Queries for Phase 1.1
+  getUserVisits(userId: String!): [ShopVisit!]! @aws_api_key @aws_cognito_user_pools
+  getVisitById(visitId: String!): ShopVisit @aws_cognito_user_pools
+  #  NEW: User Conversations Query
+  getUserConversations(userId: String!, limit: Int): UserConversationsResponse @aws_api_key @aws_cognito_user_pools
+  #  NEW: Get Conversation Messages Query
+  getConversationMessages(conversationId: String!): ConversationMessagesResponse @aws_api_key @aws_cognito_user_pools
+  #  NEW: Vehicle Management Queries
+  getUserVehicles(userId: String!): [Vehicle!]! @aws_api_key @aws_cognito_user_pools
+  getVehicleById(vehicleId: String!): Vehicle @aws_cognito_user_pools
+  getWorkAuthorization(workAuthorizationId: String!): WorkAuthorization @aws_cognito_user_pools
+  #  🌐 PUBLIC: Available to both anonymous and authenticated users
+  healthCheck: String @aws_api_key @aws_cognito_user_pools
+  listUserConversations(userId: String!): [Conversation!]! @aws_cognito_user_pools
+  #  NEW: Admin Management Queries
+  getShopMechanics(shopId: String!): GetShopMechanicsResponse! @aws_cognito_user_pools
+  getShopAnalytics(shopId: String!, timeRange: String): GetShopAnalyticsResponse! @aws_cognito_user_pools
+}
+
+type ServiceRecord {
+  cost: Float
+  date: String!
+  id: String!
+  mileage: Int
+  notes: String
+  serviceType: String!
+}
+
+type SessionData {
+  aiDiagnosis: AIDiagnosis
+  approvedEstimate: CostEstimate
+  conversationHistory: [Message!]
+  customerPreferences: CustomerPreferences
+  serviceHistory: [ServiceRecord!]
+  specialInstructions: [String!]
+}
+
+#  NEW: Mechanic Interface Types
+type Shop {
+  address: String
+  createdAt: String!
+  email: String
+  id: String!
+  name: String!
+  ownerId: String!
+  phone: String
+  updatedAt: String!
+}
+
+type ShopFeeItem {
+  cost: Float! @aws_api_key @aws_cognito_user_pools
+  description: String! @aws_api_key @aws_cognito_user_pools
+}
+
+type ShopFees {
+  items: [ShopFeeItem!]! @aws_api_key @aws_cognito_user_pools
+  total: Float! @aws_api_key @aws_cognito_user_pools
+}
+
+type ShopStatistics {
+  averageResponseTime: Float
+  highPriorityCount: Int!
+  totalCompletedToday: Int!
+  totalPendingReviews: Int!
+}
+
+#  NEW: Shop Visit Types for Phase 1.1 - Shop Visit Recognition
+type ShopVisit {
+  actualServiceTime: String
+  createdAt: String!
+  customerName: String
+  estimatedServiceTime: String
+  mechanicNotes: String
+  serviceType: String!
+  #  checked_in, in_progress, completed
+  sessionData: SessionData
+  shopId: String!
+  status: String!
+  #  diagnostic, repair, pickup, consultation
+  timestamp: String!
+  updatedAt: String!
+  userId: String!
+  vehicleInfo: VehicleInfo
+  visitId: String!
+}
+
+type ShopWorkflowOverview {
+  averageCompletionTimes: AverageCompletionTimes!
+  mechanicWorkloads: [MechanicWorkload!]!
+  statusCounts: StatusCounts!
+  totalWorkItems: Int!
+  urgencyDistribution: UrgencyDistribution!
+}
+
+type StatusCounts {
+  assigned: Int!
+  authorized: Int!
+  cancelled: Int!
+  completed: Int!
+  in_progress: Int!
+  on_hold: Int!
+}
+
+type Subscription {
+  #  🌐 PUBLIC: Real-time updates for anonymous sessions
+  onAnonymousMessageAdded(sessionId: String!): ChatResponse @aws_api_key @aws_cognito_user_pools
+  #  NEW: Mechanic Interface Subscriptions
+  onDiagnosisReviewAdded(shopId: String!): DiagnosticSession @aws_cognito_user_pools
+  onInfoRequestAdded(mechanicId: String!): InfoRequest @aws_cognito_user_pools
+  onMechanicMessageAdded(mechanicRequestId: String!): MechanicMessage @aws_cognito_user_pools
+  onMechanicNotificationAdded(mechanicId: String!): MechanicNotification @aws_cognito_user_pools
+  onMechanicRequestAssigned(customerId: String!): MechanicRequest @aws_cognito_user_pools
+  #  NEW: Phase 2.1 - Customer Communication Subscriptions
+  onMechanicRequestCreated(shopId: String!): MechanicRequest @aws_cognito_user_pools
+  onMechanicWorkflowUpdated(mechanicId: String!): WorkAuthorization @aws_cognito_user_pools
+  #  🔐 AUTHENTICATED: Real-time updates for logged-in users
+  onMessageAdded(conversationId: String!): Message @aws_cognito_user_pools
+  #  NEW: Phase 2.2 - Work Authorization Subscriptions
+  onWorkAuthorizationCreated(shopId: String!): WorkAuthorization @aws_cognito_user_pools
+  onWorkflowStatusUpdated(customerId: String!): WorkAuthorization @aws_cognito_user_pools
+}
+
+type TimeStage {
+  duration: Int
+  endTime: String
+  startTime: String
+}
+
+type TimeTracking {
+  assigned: TimeStage
+  authorized: TimeStage
+  completed: TimeStage
+  in_progress: TimeStage
+  queued: TimeStage
+}
+
+type UrgencyDistribution {
+  high: Int!
+  low: Int!
+  medium: Int!
+}
+
+type VehicleInfo {
+  make: String @aws_api_key @aws_cognito_user_pools
+  model: String @aws_api_key @aws_cognito_user_pools
+  trim: String @aws_api_key @aws_cognito_user_pools
+  vin: String @aws_api_key @aws_cognito_user_pools
+  year: Int @aws_api_key @aws_cognito_user_pools
+}
+
+#  NEW: Vehicle Management Types
+type Vehicle {
+  vehicleId: String! @aws_api_key @aws_cognito_user_pools
+  userId: String! @aws_api_key @aws_cognito_user_pools
+  make: String! @aws_api_key @aws_cognito_user_pools
+  model: String! @aws_api_key @aws_cognito_user_pools
+  year: Int! @aws_api_key @aws_cognito_user_pools
+  trim: String @aws_api_key @aws_cognito_user_pools
+  vin: String @aws_api_key @aws_cognito_user_pools
+  color: String @aws_api_key @aws_cognito_user_pools
+  mileage: Int @aws_api_key @aws_cognito_user_pools
+  createdAt: String! @aws_api_key @aws_cognito_user_pools
+  updatedAt: String! @aws_api_key @aws_cognito_user_pools
+  lastUsed: String! @aws_api_key @aws_cognito_user_pools
+}
+
+#  NEW: Phase 2.2 - Work Authorization Types
+type WorkAuthorization {
+  actualCompletion: String
+  actualDuration: Int
+  aiContext: AIContext!
+  createdAt: String!
+  customerId: String!
+  customerName: String!
+  customerNotified: Boolean!
+  estimatedCompletion: String!
+  estimatedDuration: Int!
+  id: String!
+  lastCustomerUpdate: String
+  mechanicId: String!
+  mechanicNotes: String
+  mechanicRequestId: String!
+  originalRequestMessage: String!
+  #  assigned, authorized, in_progress, completed, on_hold, cancelled
+  previousStatus: String!
+  serviceType: String!
+  shopId: String!
+  timeTracking: TimeTracking!
+  updatedAt: String!
+  urgency: String!
+  workflowStatus: String!
+}
+
+type WorkflowStatistics {
+  averageCompletionTime: Int!
+  completionRate: Float!
+  onTimeCompletionRate: Float!
+  totalActive: Int!
+  totalCompleted: Int!
+}
+
+input AIDiagnosisInput {
+  alternativeDiagnoses: [DiagnosisInput!]
+  confidence: Int!
+  primaryDiagnosis: DiagnosisInput!
+  recommendedActions: [String!]
+}
+
+input CostEstimateInput {
+  description: String!
+  max: Float!
+  min: Float!
+}
+
+input CustomerPreferencesInput {
+  communicationMethod: String
+  preferredPartType: String
+  serviceReminders: Boolean
+}
+
+input DetailedCostEstimateInput {
+  aiRetailerLinks: [RetailerLinkInput!]
+  conversationId: String!
+  diagnosticLevel: String!
+  repairItems: [RepairItemInput!]!
+  selectedOption: String!
+  vehicleInfo: DetailedVehicleInfoInput!
+}
+
+input DetailedVehicleInfoInput {
+  engine: String
+  make: String
+  model: String
+  trim: String
+  vin: String
+  year: String
+}
+
+input DiagnosisInput {
+  confidence: Int!
+  description: String!
+  issue: String!
+}
+
+input InfoRequestInput {
+  message: String!
+  requestType: String!
+  sessionId: String!
+  urgency: String!
+}
+
+input MechanicMessageInput {
+  content: String!
+  mechanicRequestId: String!
+  messageType: String!
+  metadata: MessageMetadataInput
+}
+
+#  NEW: Phase 2.1 - Customer Communication Input Types
+input MechanicRequestInput {
+  conversationId: String!
+  requestMessage: String!
+  shopId: String!
+  urgency: String!
+}
+
+#  Input Types for Mechanic Operations
+input MechanicReviewInput {
+  additionalServices: [String!]
+  mechanicNotes: String!
+  modifiedCost: CostEstimateInput
+  modifiedDiagnosis: DiagnosisInput
+  recommendedUrgency: String
+  sessionId: String!
+  status: String!
+  # NEW: For cost estimate reviews
+  estimateId: String
+}
+
+input MessageMetadataInput {
+  estimatedResponseTime: String
+  requestType: String
+  requiresResponse: Boolean
+  urgency: String
+}
+
+input RepairItemInput {
+  description: String
+  repairType: String!
+  urgency: String
+}
+
+input RetailerLinkInput {
+  description: String
+  name: String!
+  price: Float
+  url: String!
+}
+
+input SessionDataInput {
+  aiDiagnosis: AIDiagnosisInput
+  approvedEstimate: CostEstimateInput
+  conversationId: String
+  customerPreferences: CustomerPreferencesInput
+  specialInstructions: [String!]
+}
+
+#  Input Types for Shop Visits
+input ShopVisitInput {
+  customerName: String
+  estimatedServiceTime: String
+  serviceType: String!
+  sessionData: SessionDataInput
+  shopId: String!
+  vehicleInfo: VehicleInfoInput
+}
+
+input VehicleInfoInput {
+  make: String
+  model: String
+  vin: String
+  year: Int
+}
+
+#  NEW: Vehicle Management Input Types
+input VehicleInput {
+  make: String!
+  model: String!
+  year: Int!
+  trim: String
+  vin: String
+  color: String
+  mileage: Int
+}
+
+#  NEW: Phase 2.2 - Work Authorization Input Types
+input WorkAuthorizationInput {
+  estimatedDuration: Int
+  mechanicId: String!
+  mechanicRequestId: String!
+}
+
+input WorkflowStatusUpdateInput {
+  mechanicNotes: String
+  newStatus: String!
+  workAuthorizationId: String!
+}
+
+# NEW: Admin Management Types
+
+input CreateMechanicRecordInput {
+  userId: String!
+  email: String!
+  givenName: String!
+  familyName: String!
+  phoneNumber: String
+  shopId: String!
+  specialties: [String!]
+  createdBy: String
+}
+
+type MechanicRecord {
+  mechanicId: String!
+  userId: String!
+  shopId: String!
+  email: String!
+  givenName: String!
+  familyName: String!
+  phoneNumber: String
+  specialties: [String!]!
+  status: String!
+  createdAt: String!
+  updatedAt: String!
+  lastLoginAt: String
+  totalRequestsHandled: Int!
+  averageRating: Float!
+  displayName: String!
+  isActive: Boolean!
+  lastActivityText: String!
+}
+
+type CreateMechanicRecordResponse {
+  success: Boolean!
+  data: MechanicRecord
+  error: String
+}
+
+type UpdateMechanicStatusResponse {
+  success: Boolean!
+  data: MechanicRecord
+  error: String
+}
+
+type GetShopMechanicsResponse {
+  success: Boolean!
+  data: [MechanicRecord!]
+  count: Int
+  error: String
+}
+
+type ShopAnalytics {
+  shopId: String!
+  timeRange: String!
+  mechanics: MechanicsAnalytics!
+  requests: RequestsAnalytics!
+  performance: PerformanceAnalytics!
+  generatedAt: String!
+}
+
+type MechanicsAnalytics {
+  total: Int!
+  active: Int!
+  inactive: Int!
+}
+
+type RequestsAnalytics {
+  total: Int!
+  pending: Int!
+  completed: Int!
+  averageResponseTime: String!
+}
+
+type PerformanceAnalytics {
+  customerSatisfaction: Float!
+  completionRate: Float!
+  averageRating: Float!
+}
+
+type GetShopAnalyticsResponse {
+  success: Boolean!
+  data: ShopAnalytics
+  error: String
+}
+
+type ImageUploadResponse {
+  uploadUrl: String! @aws_api_key @aws_cognito_user_pools
+  s3Key: String! @aws_api_key @aws_cognito_user_pools
+  s3Bucket: String! @aws_api_key @aws_cognito_user_pools
+  expiresIn: Int! @aws_api_key @aws_cognito_user_pools
+}

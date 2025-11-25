@@ -1,0 +1,55 @@
+{
+  "reportId": "c5616b8e-a528-41e0-a3ba-1d7e72a69fe6",
+  "userId": "test-enhanced-brake32-user",
+  "conversationId": "test-enhanced-brake32",
+  "version": "v0.2-enhanced",
+  "createdAt": "2025-08-06T03:07:39.090666",
+  "repairType": "brake pad replacement",
+  
+  "vehicleInfo": {
+    "year": "2020",
+    "make": "Honda", 
+    "model": "Civic"
+  },
+  
+  "modelResults": {
+    "claude_estimate": {
+      "labor_hours_low": 1.0,
+      "labor_hours_high": 2.5,
+      "labor_hours_average": 1.5
+    },
+    "web_validation": {
+      "labor_hours_low": 1.0,
+      "labor_hours_high": 1.0,
+      "labor_hours_average": 1.0
+    },
+    "llama_estimate": {
+      "error": "An error occurred (ValidationException) when calling the InvokeModel operation: Invocation of model ID meta.llama3-2-90b-instruct-v1:0 with on-demand throughput isn't supported. Retry your request with the ID or ARN of an inference profile that contains this model."
+    }
+  },
+  
+  "initialEstimate": {
+    "labor_hours_low": 1.0,
+    "labor_hours_high": 2.5,
+    "labor_hours_average": 1.5
+  },
+  
+  "finalEstimate": {
+    "labor_hours_low": 1.0,
+    "labor_hours_high": 1.5,
+    "labor_hours_average": 1.25
+  },
+  
+  "consensusReasoning": "Given the normal wear and standard accessibility of the 2020 Honda Civic, the final estimate is closer to the lower end of the range, with an average of 1.25 hours.",
+  
+  "dataQuality": {
+    "score": 75,
+    "level": "medium",
+    "model_count": 2,
+    "factors": [
+      "initial_estimate",
+      "2_models", 
+      "complete_final"
+    ]
+  }
+}

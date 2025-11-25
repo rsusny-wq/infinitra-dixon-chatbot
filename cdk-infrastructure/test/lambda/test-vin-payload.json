@@ -1,0 +1,21 @@
+{
+  "httpMethod": "POST",
+  "path": "/validate-vin",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "multiValueHeaders": {},
+  "queryStringParameters": null,
+  "multiValueQueryStringParameters": null,
+  "pathParameters": null,
+  "stageVariables": null,
+  "requestContext": {
+    "requestId": "test-vin-request-id",
+    "stage": "test",
+    "httpMethod": "POST",
+    "path": "/validate-vin"
+  },
+  "resource": "/validate-vin",
+  "body": "{\"vin\": \"1HGBH41JXMN109186\"}",
+  "isBase64Encoded": false
+}

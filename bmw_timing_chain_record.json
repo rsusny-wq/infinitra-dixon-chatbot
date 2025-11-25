@@ -1,0 +1,55 @@
+{
+  "reportId": "2725d8f8-9d76-4a0a-8e11-d4a0e89097ac",
+  "userId": "test-enhanced-llama32-user", 
+  "conversationId": "test-enhanced-llama32",
+  "version": "v0.2-enhanced",
+  "createdAt": "2025-08-06T03:07:09.933901",
+  "repairType": "timing chain replacement",
+  
+  "vehicleInfo": {
+    "year": "2016",
+    "make": "BMW",
+    "model": "X5"
+  },
+  
+  "modelResults": {
+    "claude_estimate": {
+      "labor_hours_low": 12.5,
+      "labor_hours_high": 18.0,
+      "labor_hours_average": 15.0
+    },
+    "web_validation": {
+      "labor_hours_low": 8.0,
+      "labor_hours_high": 13.0,
+      "labor_hours_average": 10.0
+    },
+    "llama_estimate": {
+      "error": "Model access issue - Llama 3.2 90B requires provisioned throughput"
+    }
+  },
+  
+  "initialEstimate": {
+    "labor_hours_low": 12.5,
+    "labor_hours_high": 18.0,
+    "labor_hours_average": 15.0
+  },
+  
+  "finalEstimate": {
+    "labor_hours_low": 12.5,
+    "labor_hours_high": 18.0,
+    "labor_hours_average": 15.0
+  },
+  
+  "consensusReasoning": "Given the complexity of the BMW X5 and the specific symptoms, I've chosen to lean towards the higher end of the average range for a more accurate estimate.",
+  
+  "dataQuality": {
+    "score": 75,
+    "level": "medium", 
+    "model_count": 2,
+    "factors": [
+      "initial_estimate",
+      "2_models",
+      "complete_final"
+    ]
+  }
+}

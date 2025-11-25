@@ -1,0 +1,38 @@
+// Add this after the existing sessionBucket creation (around line 443)
+
+// 4. 📦 S3 Bucket for Image Storage (NEW - For VIN extraction and image processing)
+const imagesBucket = new s3.Bucket(this, 'ImagesBucket', {
+  bucketName: `dixon-smart-repair-images-${this.account}`,
+  versioned: false, // Images don't need versioning
+  lifecycleRules: [
+    {
+      id: 'DeleteOldImages',
+      enabled: true,
+      expiration: cdk.Duration.days(30), // Auto-delete images after 30 days
+    }
+  ],
+  blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+  encryption: s3.BucketEncryption.S3_MANAGED,
+  enforceSSL: true,
+  removalPolicy: cdk.RemovalPolicy.RETAIN,
+  cors: [
+    {
+      allowedMethods: [s3.HttpMethods.GET, s3.HttpMethods.PUT, s3.HttpMethods.POST],
+      allowedOrigins: ['*'], // Restrict this to your domain in production
+      allowedHeaders: ['*'],
+      maxAge: 3000,
+    }
+  ],
+});
+
+// Add to Lambda environment variables (around line 501)
+IMAGES_S3_BUCKET: imagesBucket.bucketName,
+
+// Grant permissions to Lambda (around line 587)
+imagesBucket.grantReadWrite(strandsLambda);
+
+// Add to outputs (around line 1025)
+new cdk.CfnOutput(this, 'ImagesBucketName', {
+  value: imagesBucket.bucketName,
+  description: 'S3 bucket for image storage and processing',
+});

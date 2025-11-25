@@ -1,0 +1,30 @@
+{
+  "name": "dixon-smart-repair-tests",
+  "version": "1.0.0",
+  "description": "Comprehensive test suite for Dixon Smart Repair system",
+  "main": "comprehensive-system-test.js",
+  "scripts": {
+    "test": "node comprehensive-system-test.js",
+    "test:quick": "node quick-test.js",
+    "test:basic": "node comprehensive-system-test.js --suite=BASIC_CHAT",
+    "test:vin": "node comprehensive-system-test.js --suite=VIN_PROCESSING",
+    "test:tools": "node comprehensive-system-test.js --suite=TOOL_INTEGRATION",
+    "test:performance": "node comprehensive-system-test.js --suite=PERFORMANCE",
+    "health": "node -e \"require('./comprehensive-system-test').runSystemHealthCheck()\""
+  },
+  "keywords": [
+    "dixon-smart-repair",
+    "automotive",
+    "testing",
+    "vin-processing",
+    "graphql",
+    "lambda"
+  ],
+  "author": "Dixon Smart Repair Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

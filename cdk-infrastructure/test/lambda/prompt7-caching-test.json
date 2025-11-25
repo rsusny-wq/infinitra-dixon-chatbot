@@ -1,0 +1,21 @@
+{
+  "httpMethod": "POST",
+  "path": "/web-search",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "multiValueHeaders": {},
+  "queryStringParameters": null,
+  "multiValueQueryStringParameters": null,
+  "pathParameters": null,
+  "stageVariables": null,
+  "requestContext": {
+    "requestId": "prompt7-caching-test",
+    "stage": "test",
+    "httpMethod": "POST",
+    "path": "/web-search"
+  },
+  "resource": "/web-search",
+  "body": "{\"query\": \"BMW 3 Series 2020 brake service procedure automotive repair\", \"searchType\": \"procedures\", \"vehicleInfo\": {\"make\": \"BMW\", \"model\": \"3 Series\", \"year\": 2020}}",
+  "isBase64Encoded": false
+}

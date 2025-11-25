@@ -1,0 +1,11 @@
+{
+  "query": "sendMessage",
+  "variables": {
+    "input": {
+      "conversationId": "test-logging-debug-1754395400",
+      "userId": "test-user-logging-debug",
+      "message": "My 2020 Honda Civic brake pads are squeaking and I need a labor cost estimate for brake pad replacement",
+      "timestamp": "2025-08-05T12:03:00.000Z"
+    }
+  }
+}

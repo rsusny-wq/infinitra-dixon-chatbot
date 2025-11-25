@@ -1,0 +1,374 @@
+import React, { useState, useCallback } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Modal,
+  ScrollView,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+
+// Import styles
+import { styles } from './DixonAuthModal.styles';
+import { DesignSystem } from '../../../../styles/designSystem';
+
+// Types
+interface DixonAuthModalProps {
+  isVisible: boolean;
+  onClose: () => void;
+  onSignIn: (email: string, password: string) => Promise<boolean>;
+  onSignUp: (userData: any) => Promise<boolean>;
+  onForgotPassword: (email: string) => Promise<boolean>;
+  onResetPassword: (email: string, code: string, newPassword: string) => Promise<boolean>;
+  isLoading: boolean;
+  error: string | null;
+  onClearError: () => void;
+}
+
+type AuthMode = 'signin' | 'signup' | 'forgot' | 'reset';
+
+const DixonAuthModal: React.FC<DixonAuthModalProps> = ({
+  isVisible,
+  onClose,
+  onSignIn,
+  onSignUp,
+  onForgotPassword,
+  onResetPassword,
+  isLoading,
+  error,
+  onClearError,
+}) => {
+  const [authMode, setAuthMode] = useState<AuthMode>('signin');
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    confirmPassword: '',
+    givenName: '',
+    familyName: '',
+    phoneNumber: '',
+    resetCode: '',
+    newPassword: '',
+    confirmNewPassword: '',
+  });
+
+  // Handle input changes
+  const handleInputChange = useCallback((field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    if (error) onClearError();
+  }, [error, onClearError]);
+
+  // Handle sign in
+  const handleSignIn = useCallback(async () => {
+    if (!formData.email || !formData.password) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    const success = await onSignIn(formData.email, formData.password);
+    if (success) {
+      onClose();
+      setFormData({
+        email: '',
+        password: '',
+        confirmPassword: '',
+        givenName: '',
+        familyName: '',
+        phoneNumber: '',
+      });
+    }
+  }, [formData, onSignIn, onClose]);
+
+  // Handle forgot password
+  const handleForgotPassword = useCallback(async () => {
+    if (!formData.email) {
+      Alert.alert('Error', 'Please enter your email address');
+      return;
+    }
+
+    const success = await onForgotPassword(formData.email);
+    if (success) {
+      Alert.alert(
+        'Reset Code Sent',
+        'Please check your email for the password reset code.',
+        [{ text: 'OK', onPress: () => setAuthMode('reset') }]
+      );
+    }
+  }, [formData.email, onForgotPassword]);
+
+  // Handle reset password
+  const handleResetPassword = useCallback(async () => {
+    if (!formData.email || !formData.resetCode || !formData.newPassword) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    if (formData.newPassword !== formData.confirmNewPassword) {
+      Alert.alert('Error', 'New passwords do not match');
+      return;
+    }
+
+    const success = await onResetPassword(formData.email, formData.resetCode, formData.newPassword);
+    if (success) {
+      Alert.alert(
+        'Password Reset Successful',
+        'Your password has been reset successfully. You can now sign in with your new password.',
+        [{ text: 'OK', onPress: () => setAuthMode('signin') }]
+      );
+      setFormData({
+        email: formData.email, // Keep email for sign in
+        password: '',
+        confirmPassword: '',
+        givenName: '',
+        familyName: '',
+        phoneNumber: '',
+        resetCode: '',
+        newPassword: '',
+        confirmNewPassword: '',
+      });
+    }
+  }, [formData, onResetPassword]);
+
+  // Handle sign up
+  const handleSignUp = useCallback(async () => {
+    if (!formData.email || !formData.password || !formData.givenName || !formData.familyName) {
+      Alert.alert('Error', 'Please fill in all required fields');
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      Alert.alert('Error', 'Passwords do not match');
+      return;
+    }
+
+    const userData = {
+      email: formData.email,
+      password: formData.password,
+      givenName: formData.givenName,
+      familyName: formData.familyName,
+      phoneNumber: formData.phoneNumber || undefined,
+      role: 'customer' as const,
+    };
+
+    const success = await onSignUp(userData);
+    if (success) {
+      Alert.alert(
+        'Success',
+        'Account created successfully! Please check your email to verify your account.',
+        [{ text: 'OK', onPress: () => setAuthMode('signin') }]
+      );
+    }
+  }, [formData, onSignUp]);
+
+  // Switch auth mode
+  const switchAuthMode = useCallback(() => {
+    setAuthMode(prev => prev === 'signin' ? 'signup' : 'signin');
+    onClearError();
+  }, [onClearError]);
+
+  return (
+    <Modal
+      visible={isVisible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      <View style={styles.overlay}>
+        <View style={styles.modalContainer}>
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>
+              {authMode === 'signin' && 'Sign In'}
+              {authMode === 'signup' && 'Create Account'}
+              {authMode === 'forgot' && 'Forgot Password'}
+              {authMode === 'reset' && 'Reset Password'}
+            </Text>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={onClose}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name="close"
+                size={DesignSystem.components.iconSize.md}
+                color={DesignSystem.colors.gray600}
+              />
+            </TouchableOpacity>
+          </View>
+
+          {/* Content */}
+          <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+            {/* Welcome Message */}
+            <View style={styles.welcomeSection}>
+              <Text style={styles.welcomeTitle}>
+                Welcome to Dixon Smart Repair
+              </Text>
+              <Text style={styles.welcomeSubtitle}>
+                {authMode === 'signin' && 'Sign in to access your vehicle history and personalized recommendations'}
+                {authMode === 'signup' && 'Create an account to save your conversations and vehicle information'}
+                {authMode === 'forgot' && 'Enter your email address and we\'ll send you a password reset code'}
+                {authMode === 'reset' && 'Enter the code from your email and choose a new password'}
+              </Text>
+            </View>
+
+            {/* Error Message */}
+            {error && (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            )}
+
+            {/* Form Fields */}
+            <View style={styles.formContainer}>
+              {/* Sign Up Fields */}
+              {authMode === 'signup' && (
+                <>
+                  <View style={styles.nameRow}>
+                    <View style={[styles.inputContainer, { flex: 1, marginRight: 8 }]}>
+                      <Text style={styles.inputLabel}>First Name *</Text>
+                      <TextInput
+                        style={styles.textInput}
+                        value={formData.givenName}
+                        onChangeText={(value) => handleInputChange('givenName', value)}
+                        placeholder="John"
+                        placeholderTextColor={DesignSystem.colors.gray400}
+                        autoCapitalize="words"
+                        editable={!isLoading}
+                      />
+                    </View>
+                    <View style={[styles.inputContainer, { flex: 1, marginLeft: 8 }]}>
+                      <Text style={styles.inputLabel}>Last Name *</Text>
+                      <TextInput
+                        style={styles.textInput}
+                        value={formData.familyName}
+                        onChangeText={(value) => handleInputChange('familyName', value)}
+                        placeholder="Doe"
+                        placeholderTextColor={DesignSystem.colors.gray400}
+                        autoCapitalize="words"
+                        editable={!isLoading}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.inputContainer}>
+                    <Text style={styles.inputLabel}>Phone Number</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      value={formData.phoneNumber}
+                      onChangeText={(value) => handleInputChange('phoneNumber', value)}
+                      placeholder="+1 (555) 123-4567"
+                      placeholderTextColor={DesignSystem.colors.gray400}
+                      keyboardType="phone-pad"
+                      editable={!isLoading}
+                    />
+                  </View>
+                </>
+              )}
+
+              {/* Email */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Email *</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={formData.email}
+                  onChangeText={(value) => handleInputChange('email', value)}
+                  placeholder="john@example.com"
+                  placeholderTextColor={DesignSystem.colors.gray400}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  editable={!isLoading}
+                />
+              </View>
+
+              {/* Password */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Password *</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={formData.password}
+                  onChangeText={(value) => handleInputChange('password', value)}
+                  placeholder="Enter your password"
+                  placeholderTextColor={DesignSystem.colors.gray400}
+                  secureTextEntry
+                  editable={!isLoading}
+                />
+              </View>
+
+              {/* Confirm Password (Sign Up only) */}
+              {authMode === 'signup' && (
+                <View style={styles.inputContainer}>
+                  <Text style={styles.inputLabel}>Confirm Password *</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={formData.confirmPassword}
+                    onChangeText={(value) => handleInputChange('confirmPassword', value)}
+                    placeholder="Confirm your password"
+                    placeholderTextColor={DesignSystem.colors.gray400}
+                    secureTextEntry
+                    editable={!isLoading}
+                  />
+                </View>
+              )}
+            </View>
+
+            {/* Action Button */}
+            <TouchableOpacity
+              style={[
+                styles.actionButton,
+                isLoading && styles.actionButtonDisabled
+              ]}
+              onPress={authMode === 'signin' ? handleSignIn : handleSignUp}
+              disabled={isLoading}
+              activeOpacity={0.8}
+            >
+              {isLoading ? (
+                <ActivityIndicator color={DesignSystem.colors.white} />
+              ) : (
+                <Text style={styles.actionButtonText}>
+                  {authMode === 'signin' ? 'Sign In' : 'Create Account'}
+                </Text>
+              )}
+            </TouchableOpacity>
+
+            {/* Forgot Password (Sign In only) */}
+            {authMode === 'signin' && (
+              <TouchableOpacity
+                style={styles.forgotPasswordContainer}
+                onPress={() => setAuthMode('forgot')}
+                activeOpacity={0.7}
+                disabled={isLoading}
+              >
+                <Text style={styles.forgotPasswordText}>
+                  Forgot your password?
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Switch Mode */}
+            <View style={styles.switchModeContainer}>
+              <Text style={styles.switchModeText}>
+                {authMode === 'signin' 
+                  ? "Don't have an account? " 
+                  : "Already have an account? "
+                }
+              </Text>
+              <TouchableOpacity
+                onPress={switchAuthMode}
+                disabled={isLoading}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.switchModeLink}>
+                  {authMode === 'signin' ? 'Sign Up' : 'Sign In'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
+export default React.memo(DixonAuthModal);

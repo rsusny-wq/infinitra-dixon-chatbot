@@ -1,0 +1,21 @@
+{
+  "httpMethod": "POST",
+  "path": "/web-search",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "multiValueHeaders": {},
+  "queryStringParameters": null,
+  "multiValueQueryStringParameters": null,
+  "pathParameters": null,
+  "stageVariables": null,
+  "requestContext": {
+    "requestId": "prompt7-relevance-test",
+    "stage": "test",
+    "httpMethod": "POST",
+    "path": "/web-search"
+  },
+  "resource": "/web-search",
+  "body": "{\"query\": \"Honda Accord maintenance schedule recipes cooking food\", \"searchType\": \"procedures\", \"vehicleInfo\": {\"make\": \"Honda\", \"model\": \"Accord\", \"year\": 2020}}",
+  "isBase64Encoded": false
+}

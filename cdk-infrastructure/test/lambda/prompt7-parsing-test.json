@@ -1,0 +1,21 @@
+{
+  "httpMethod": "POST",
+  "path": "/web-search",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "multiValueHeaders": {},
+  "queryStringParameters": null,
+  "multiValueQueryStringParameters": null,
+  "pathParameters": null,
+  "stageVariables": null,
+  "requestContext": {
+    "requestId": "prompt7-parsing-test",
+    "stage": "test",
+    "httpMethod": "POST",
+    "path": "/web-search"
+  },
+  "resource": "/web-search",
+  "body": "{\"query\": \"Toyota Camry 2019 oil change labor rate automotive service\", \"searchType\": \"labor\", \"vehicleInfo\": {\"make\": \"Toyota\", \"model\": \"Camry\", \"year\": 2019}}",
+  "isBase64Encoded": false
+}

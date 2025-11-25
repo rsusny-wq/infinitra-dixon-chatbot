@@ -1,0 +1,110 @@
+// Add to SendMessageRequest interface
+export interface SendMessageRequest {
+  message: string;
+  conversationId?: string;
+  userId?: string;
+  diagnostic_context?: {
+    mode: string;
+    accuracy: string;
+    user_selection: string;
+    vehicle_details_required: boolean;
+  };
+  image_base64?: string;      // Keep for backward compatibility
+  image_s3_key?: string;      // NEW: S3 key
+  image_s3_bucket?: string;   // NEW: S3 bucket
+  imageFile?: File;           // NEW: For direct upload
+}
+
+// Add new method for S3 image upload
+async uploadImageToS3(imageFile: File, userId?: string): Promise<{s3Key: string, s3Bucket: string}> {
+  try {
+    console.log('ChatService: Uploading image to S3', imageFile.name);
+
+    // Get pre-signed upload URL
+    const uploadUrlResponse = await client.graphql({
+      query: `
+        mutation GenerateImageUploadUrl($fileName: String!, $contentType: String!, $userId: String) {
+          generateImageUploadUrl(fileName: $fileName, contentType: $contentType, userId: $userId) {
+            uploadUrl
+            s3Key
+            s3Bucket
+            expiresIn
+          }
+        }
+      `,
+      variables: {
+        fileName: imageFile.name,
+        contentType: imageFile.type,
+        userId: userId
+      }
+    });
+
+    const uploadData = uploadUrlResponse.data?.generateImageUploadUrl;
+    if (!uploadData) {
+      throw new Error('Failed to get upload URL');
+    }
+
+    // Upload directly to S3
+    const uploadResponse = await fetch(uploadData.uploadUrl, {
+      method: 'PUT',
+      body: imageFile,
+      headers: {
+        'Content-Type': imageFile.type,
+      },
+    });
+
+    if (!uploadResponse.ok) {
+      throw new Error(`S3 upload failed: ${uploadResponse.statusText}`);
+    }
+
+    console.log('ChatService: Image uploaded successfully to S3');
+    return {
+      s3Key: uploadData.s3Key,
+      s3Bucket: uploadData.s3Bucket
+    };
+
+  } catch (error) {
+    console.error('ChatService: Error uploading image to S3', error);
+    throw error;
+  }
+}
+
+// Update sendMessage method to handle both approaches
+async sendMessage(request: SendMessageRequest): Promise<SendMessageResponse> {
+  try {
+    console.log('ChatService: Sending message to Lambda', request);
+
+    // Handle image upload if imageFile is provided
+    let imageS3Key: string | undefined;
+    let imageS3Bucket: string | undefined;
+
+    if (request.imageFile) {
+      const uploadResult = await this.uploadImageToS3(request.imageFile, request.userId);
+      imageS3Key = uploadResult.s3Key;
+      imageS3Bucket = uploadResult.s3Bucket;
+    } else if (request.image_s3_key && request.image_s3_bucket) {
+      imageS3Key = request.image_s3_key;
+      imageS3Bucket = request.image_s3_bucket;
+    }
+
+    // ... existing user authentication logic ...
+
+    const response = await client.graphql({
+      query: SEND_MESSAGE_MUTATION,
+      variables: {
+        message: request.message,
+        conversationId: request.conversationId || `conv-${Date.now()}`,
+        userId: userId,
+        diagnostic_context: request.diagnostic_context ? JSON.stringify(request.diagnostic_context) : undefined,
+        image_base64: request.image_base64, // Keep for backward compatibility
+        image_s3_key: imageS3Key,           // NEW: S3 approach
+        image_s3_bucket: imageS3Bucket,     // NEW: S3 approach
+      },
+      authMode: authMode as any,
+    });
+
+    // ... rest of existing logic ...
+  } catch (error) {
+    // ... existing error handling ...
+  }
+}

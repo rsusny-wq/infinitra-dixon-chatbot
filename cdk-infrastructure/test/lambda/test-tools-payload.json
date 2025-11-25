@@ -1,0 +1,19 @@
+{
+  "httpMethod": "GET",
+  "path": "/tools",
+  "headers": {},
+  "multiValueHeaders": {},
+  "queryStringParameters": null,
+  "multiValueQueryStringParameters": null,
+  "pathParameters": null,
+  "stageVariables": null,
+  "requestContext": {
+    "requestId": "test-tools-request-id",
+    "stage": "test",
+    "httpMethod": "GET",
+    "path": "/tools"
+  },
+  "resource": "/tools",
+  "body": null,
+  "isBase64Encoded": false
+}
